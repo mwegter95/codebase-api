@@ -60,7 +60,7 @@ app.get('/api/codebase/file', async (req: Request, res: Response) => {
     try {
         const fullPath = path.join(codebasePath, filePath);
         const content = await fs.readFile(fullPath, { encoding: 'utf-8' });
-        res.send(content);
+        res.type('text/plain').send(content);
     } catch (error) {
         res.status(500).send({ error: (error as Error).message });
     }
@@ -73,7 +73,7 @@ app.get('/api/git/diff', async (req: Request, res: Response) => {
             console.error(`exec error: ${error}`);
             return res.status(500).send({ error: stderr });
         }
-        res.send(stdout);
+        res.type('text/plain').send(stdout);
     });
 });
 
