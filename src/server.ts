@@ -8,6 +8,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+console.log(process.env.CODEBASE_PATH)
 const codebasePath = process.env.CODEBASE_PATH || '/Users/michaelwegter/Desktop/Projects/codebase-api';
 
 app.use(express.json());
@@ -106,6 +107,11 @@ app.get('/api/git/diff', async (req: Request, res: Response) => {
         }
         res.type('text/plain').send(stdout);
     });
+});
+
+// Placeholder for the functionality tracker endpoint
+app.get('/api/functionality/tracker', async (req, res) => {
+    res.status(501).send({ message: 'Functionality tracker not implemented yet.' });
 });
 
 app.listen(port, () => {
