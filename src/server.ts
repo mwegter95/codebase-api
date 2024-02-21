@@ -77,36 +77,30 @@ io.on('connection', (socket) => {
     });
 });
 
-// Refactored script execution function
 async function executeScript(scriptContent: string, basePath: string, res: Response) {
-    const scriptPath = path.join(basePath, `script-${Date.now()}.sh`);
+    const scriptFileName = `script-${Date.now()}.sh`;
+    const scriptPath = path.join(basePath, scriptFileName);
 
     try {
+        // Write the script file
         await fs.writeFile(scriptPath, scriptContent, 'utf8');
 
-        const fileExists = await fs.access(scriptPath, fs.constants.F_OK)
-            .then(() => true)
-            .catch(() => false);
+        // Construct and execute the Docker command
+        const dockerCommand = `docker run --rm -v "${basePath}:/app" script-runner:latest /app/${scriptFileName}`;
+        const output = await exec(dockerCommand);
 
-        if (!fileExists) {
-            throw new Error('Failed to create script file.');
-        }
-
-        const dockerCommand = `docker run --rm -v "${basePath}:/app" script-runner:latest /app/${path.basename(scriptPath)}`;
-        execCallback(dockerCommand, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`exec error: ${error}`);
-                return res.status(500).send({ error: stderr });
-            }
-            res.send({ message: "Script executed successfully.", output: stdout });
-        });
+        // Send success response
+        res.send({ message: "Script executed successfully.", output: output });
     } catch (error) {
+        // Handle errors from both fs and execPromise
+        console.error((error as Error).message);
         res.status(500).send({ error: (error as Error).message });
     } finally {
+        // Clean up by deleting the script file, ignoring errors in cleanup
         try {
             await fs.unlink(scriptPath);
-        } catch (unlinkError) {
-            console.error(`Error deleting script file: ${(unlinkError as Error).message}`);
+        } catch (error) {
+            console.error(`Error deleting script file: ${(error as Error).message}`);
         }
     }
 }
