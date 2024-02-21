@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Repo Diff Comparison</title>
+</head>
+
+<body>
+    <h1>Repository Diff Comparison</h1>
+    <button id="startComparison">Start Comparison</button>
+    <div id="diffResults"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        document.getElementById('startComparison').addEventListener('click', () => {
+            socket.emit('start-comparison');
+        });
+
+        socket.on('diff-result', (diffs) => {
+            const diffResults = document.getElementById('diffResults');
+            diffResults.innerHTML = ""; // Clear previous results
+            diffs.forEach((diff, index) => {
+                const diffElement = document.createElement('div');
+                diffElement.innerHTML = `<h4>Change ${index + 1}</h4><pre>${diff.content}</pre>`;
+
+                const checkBox = document.createElement('input');
+                checkBox.type = 'checkbox';
+                checkBox.id = `diff-${index}`;
+                checkBox.dataset.diffId = diff.id;
+
+                diffElement.appendChild(checkBox);
+                diffResults.appendChild(diffElement);
+            });
+
+            if (diffs.length > 0) {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.textContent = 'Confirm Selection';
+                confirmBtn.addEventListener('click', () => {
+                    const selectedDiffs = [];
+                    diffs.forEach((_, index) => {
+                        const checkBox = document.getElementById(`diff-${index}`);
+                        if (checkBox && checkBox.checked) {
+                            selectedDiffs.push(checkBox.dataset.diffId);
+                        }
+                    });
+                    socket.emit('apply-selections', selectedDiffs);
+                });
+                diffResults.appendChild(confirmBtn);
+            }
+        });
+    </script>
+</body>
+
+</html>

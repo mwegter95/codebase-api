@@ -1,14 +1,25 @@
 import express, { Request, Response } from 'express';
-import { exec, spawn } from 'child_process';
+// import { exec, spawn } from 'child_process';
+import { exec as execCallback } from 'child_process';
+import { promisify } from 'util';
 import { promises as fs } from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
 import axios from 'axios'
 import morgan from 'morgan'
+import { createServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+const io = new SocketIOServer(httpServer, {
+  cors: {
+    origin: "*", // Adjust according to your needs for CORS policy
+  }
+});
 const port = process.env.PORT || 3000;
 console.log(process.env.CODEBASE_PATH)
 const codebasePath = process.env.CODEBASE_PATH || '/Users/michaelwegter/Desktop/Projects/codebase-api';
@@ -21,6 +32,48 @@ app.use(express.text());
 app.use(express.text({ type: 'text/plain' }));
 // Morgan for endpoint api logging
 app.use(morgan('tiny'));
+
+const exec = promisify(execCallback);
+io.on('connection', (socket) => {
+    console.log('A client connected');
+
+    socket.on('start-comparison', async () => {
+        try {
+            const { stdout } = await exec(`git diff --name-only ${codebasePath} ${devTestPath}`);
+            const filteredOutput = stdout.split('\n')
+                                        .filter(line => !line.includes('.git') && !line.includes('node_modules') && !line.includes('/dev/null'))
+                                        .filter(Boolean); // Remove empty lines
+            const diffs = filteredOutput.map(file => {
+                return { id: file, content: file }; // Adjust based on how you want to represent this
+            });
+            socket.emit('diff-result', diffs);
+        } catch (error) {
+            console.error('Error generating diffs:', error);
+            socket.emit('error', 'Failed to generate diffs');
+        }
+    });
+
+    socket.on('apply-selections', async (selectedDiffs) => {
+        console.log('Applying selected diffs:', selectedDiffs);
+        try {
+            for (const file of selectedDiffs) {
+                const patchPath = `${codebasePath}/temp.patch`;
+                const { stdout: patchContent } = await exec(`git diff ${codebasePath}/${file} ${devTestPath}/${file}`);
+                await fs.writeFile(patchPath, patchContent);
+                await exec(`git apply ${patchPath}`, { cwd: codebasePath });
+                await fs.unlink(patchPath);
+            }
+            socket.emit('apply-result', 'Selected changes applied successfully');
+        } catch (error) {
+            console.error('Error applying selected diffs:', error);
+            socket.emit('error', 'Failed to apply selected changes');
+        }
+    });
+
+    socket.on('disconnect', () => {
+        console.log('Client disconnected');
+    });
+});
 
 // Refactored script execution function
 async function executeScript(scriptContent: string, basePath: string, res: Response) {
@@ -38,7 +91,7 @@ async function executeScript(scriptContent: string, basePath: string, res: Respo
         }
 
         const dockerCommand = `docker run --rm -v "${basePath}:/app" script-runner:latest /app/${path.basename(scriptPath)}`;
-        exec(dockerCommand, (error, stdout, stderr) => {
+        execCallback(dockerCommand, (error, stdout, stderr) => {
             if (error) {
                 console.error(`exec error: ${error}`);
                 return res.status(500).send({ error: stderr });
@@ -56,6 +109,7 @@ async function executeScript(scriptContent: string, basePath: string, res: Respo
     }
 }
 
+app.use(express.static('public'));
 // Original script execution endpoint
 app.post('/api/execute/script', async (req: Request, res: Response) => {
     const scriptContent = req.body.output;
@@ -71,7 +125,7 @@ app.post('/api/execute/dev-script', async (req: Request, res: Response) => {
 
 // Endpoint for fetching the codebase tree
 app.get('/api/codebase/tree', async (req, res) => {
-    exec(`tree ${codebasePath} -I 'node_modules'`, {shell: "/bin/bash"}, (error, stdout, stderr) => {
+    execCallback(`tree ${codebasePath} -I 'node_modules'`, {shell: "/bin/bash"}, (error, stdout, stderr) => {
         if (error) {
             console.error(`exec error: ${error}`);
             return res.status(500).send({ error: stderr });
@@ -99,7 +153,7 @@ app.get('/api/codebase/file', async (req: Request, res: Response) => {
 
 // Endpoint for fetching git diff
 app.get('/api/git/diff', async (req: Request, res: Response) => {
-    exec(`git -C ${codebasePath} diff`, (error, stdout, stderr) => {
+    execCallback(`git -C ${codebasePath} diff`, (error, stdout, stderr) => {
         if (error) {
             console.error(`exec error: ${error}`);
             return res.status(500).send({ error: stderr });
@@ -118,7 +172,7 @@ app.get('/api/dev-repo/start', async (req: Request, res: Response) => {
     const startCommand = 'npm start';
     const devTestHealthCheckURL = 'http://localhost:3003/health'; // Adjust the port as necessary
 
-    exec(startCommand, { cwd: devTestPath }, async (error, stdout, stderr) => {
+    execCallback(startCommand, { cwd: devTestPath }, async (error, stdout, stderr) => {
         if (error) {
             console.error(`exec error: ${error}`);
             // Check if the error is due to the port already in use
@@ -181,6 +235,8 @@ app.get('/api/dev-repo/health', async (req: Request, res: Response) => {
         res.status(500).send({ error: "Dev-test repo is not healthy." });
     }
 });
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
+
+// Listen on the httpServer instead of the Express app directly
+httpServer.listen(port, () => {
+  console.log(`Server with Websockets running at http://localhost:${port}`);
 });
