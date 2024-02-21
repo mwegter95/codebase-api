@@ -3,18 +3,23 @@ import { exec, spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import morgan from 'morgan'
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3003;
 console.log(process.env.CODEBASE_PATH)
-const codebasePath = process.env.CODEBASE_PATH || '/Users/michaelwegter/Desktop/Projects/codebase-api';
+const codebasePath = process.env.CODEBASE_PATH || '/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test';
+const devTestPath = '/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test'; // Adjust as necessary
+
 
 app.use(express.json());
 app.use(express.text());
 // Middleware to parse plain text body
 app.use(express.text({ type: 'text/plain' }));
+// Morgan for endpoint api logging
+app.use(morgan('tiny'));
 
 app.post('/api/execute/script', async (req: Request, res: Response) => {
     // Read script content from the "output" key in the JSON body
@@ -67,6 +72,50 @@ app.post('/api/execute/script', async (req: Request, res: Response) => {
             console.error(`Error deleting script file: ${(unlinkError as Error).message}`);
         }
     }
+});// Refactored script execution function
+async function executeScript(scriptContent: string, basePath: string, res: Response) {
+    const scriptPath = path.join(basePath, `script-${Date.now()}.sh`);
+
+    try {
+        await fs.writeFile(scriptPath, scriptContent, 'utf8');
+
+        const fileExists = await fs.access(scriptPath, fs.constants.F_OK)
+            .then(() => true)
+            .catch(() => false);
+
+        if (!fileExists) {
+            throw new Error('Failed to create script file.');
+        }
+
+        const dockerCommand = `docker run --rm -v "${basePath}:/app" script-runner:latest /app/${path.basename(scriptPath)}`;
+        exec(dockerCommand, (error, stdout, stderr) => {
+            if (error) {
+                console.error(`exec error: ${error}`);
+                return res.status(500).send({ error: stderr });
+            }
+            res.send({ message: "Script executed successfully.", output: stdout });
+        });
+    } catch (error) {
+        res.status(500).send({ error: (error as Error).message });
+    } finally {
+        try {
+            await fs.unlink(scriptPath);
+        } catch (unlinkError) {
+            console.error(`Error deleting script file: ${(unlinkError as Error).message}`);
+        }
+    }
+}
+
+// Original script execution endpoint
+app.post('/api/execute/script', async (req: Request, res: Response) => {
+    const scriptContent = req.body.output;
+    await executeScript(scriptContent, codebasePath, res);
+});
+
+// New endpoint for executing scripts in the dev-test repo
+app.post('/api/execute/dev-script', async (req: Request, res: Response) => {
+    const scriptContent = req.body.output;
+    await executeScript(scriptContent, devTestPath, res);
 });
 
 
@@ -112,6 +161,10 @@ app.get('/api/git/diff', async (req: Request, res: Response) => {
 // Placeholder for the functionality tracker endpoint
 app.get('/api/functionality/tracker', async (req, res) => {
     res.status(501).send({ message: 'Functionality tracker not implemented yet.' });
+});
+
+app.get('/health', (req: Request, res: Response) => {
+    res.status(200).send({ status: 'ok' });
 });
 
 app.listen(port, () => {
