@@ -238,6 +238,11 @@ app.get('/api/dev-repo/health', async (req: Request, res: Response) => {
     }
 });
 
+// Healthcheck endpoint
+app.get('/health', (req: Request, res: Response) => {
+    res.status(200).send({ status: 'ok' });
+})
+
 // Listen on the httpServer instead of the Express app directly
 httpServer.listen(port, () => {
   console.log(`Server with Websockets running at http://localhost:${port}`);
