@@ -18,49 +18,81 @@ interface HistoryData {
 }
 
 async function readTrackerFile(): Promise<any> {
-    const data = await fs.readFile(trackerFilePath, 'utf8');
-    return JSON.parse(data);
+    try {
+        const data = await fs.readFile(trackerFilePath, "utf8");
+        return JSON.parse(data);
+    } catch (error) {
+        console.error("Error reading tracker file:", error);
+        return {}; // Return empty object if file does not exist or cannot be read
+    }
 }
 
 async function writeTrackerFile(trackerData: any): Promise<void> {
     await fs.writeFile(trackerFilePath, JSON.stringify(trackerData, null, 2), 'utf8');
 }
 
-async function appendTestHistory(functionalityID: string, testResult: TestResult): Promise<void> {
-    // Initialize historyData with the correct type
-    let historyData: HistoryData = {};
+async function appendTestHistory(
+    functionalityID: string,
+    testResult: TestResult
+): Promise<void> {
     try {
+        let historyData: HistoryData = {};
         const historyJson = await fs.readFile(historyFilePath, "utf8");
-        historyData = JSON.parse(historyJson);
+        if (historyJson) {
+            historyData = JSON.parse(historyJson);
+        }
+
+        if (!historyData[functionalityID]) {
+            historyData[functionalityID] = [];
+        }
+
+        historyData[functionalityID].push(testResult);
+
+        await fs.writeFile(
+            historyFilePath,
+            JSON.stringify(historyData, null, 2),
+            "utf8"
+        );
     } catch (error) {
-        console.error("Error reading test history file:", error);
+        console.error("Error appending test history:", error);
     }
-
-    if (!historyData[functionalityID]) {
-        historyData[functionalityID] = [];
-    }
-
-    historyData[functionalityID].push(testResult);
-
-    await fs.writeFile(
-        historyFilePath,
-        JSON.stringify(historyData, null, 2),
-        "utf8"
-    );
 }
 
 async function runJestTests() {
-    exec('jest --json --outputFile=testResults.json', async (error, stdout, stderr) => {
+    const outputDirectory = path.join(__dirname, "..", "src"); // Adjust the path as necessary
+    const testResultsPath = path.join(outputDirectory, "testResults.json");
+    const command = `jest --json --outputFile=${testResultsPath} --outputDirectory=${outputDirectory}`;
+
+    exec(command, async (error, stdout, stderr) => {
         if (error) {
-            console.error('Error executing Jest tests:', stderr);
+            console.error("Error executing Jest tests:", stderr);
             return;
         }
 
-        const jestResults = JSON.parse(await fs.readFile('testResults.json', 'utf8'));
+        const jestResults = JSON.parse(
+            await fs.readFile(testResultsPath, "utf8")
+        );
+
+        console.log("Jest results:", jestResults); // Debug console log
+
         const trackerData = await readTrackerFile();
 
+        console.log("Tracker data:", trackerData); // Debug console log
+
+        if (!jestResults || !jestResults.testResults) {
+            console.error("No test results found.");
+            return;
+        }
+
         jestResults.testResults.forEach((testSuite: any) => {
+            if (!testSuite.testResults) {
+                console.error("No test results found for suite:", testSuite);
+                return;
+            }
+
             testSuite.testResults.forEach((result: any) => {
+                console.log("Processing test result:", result); // Debug console log
+
                 const functionalityID = result.ancestorTitles[0];
                 const testResult: TestResult = {
                     functionalityID: functionalityID,
@@ -69,19 +101,29 @@ async function runJestTests() {
                     duration: result.duration,
                 };
 
+                if (!trackerData) {
+                    console.error("Tracker data is undefined.");
+                    return;
+                }
+
                 if (!trackerData[functionalityID]) {
                     trackerData[functionalityID] = {};
                 }
 
                 const dynamicUpdate = {
-                    LastTestResult: testResult.status === 'passed' ? 'Passed' : 'Failed',
+                    LastTestResult:
+                        testResult.status === "passed" ? "Passed" : "Failed",
                     LastTestTime: new Date().toISOString(),
                     LastTestOutput: testResult.message,
-                    LastOutputMatchesExpected: testResult.status === 'passed' ? 'Yes' : 'No',
+                    LastOutputMatchesExpected:
+                        testResult.status === "passed" ? "Yes" : "No",
                     LastUpdated: new Date().toISOString(),
                 };
 
-                trackerData[functionalityID] = { ...trackerData[functionalityID], ...dynamicUpdate };
+                trackerData[functionalityID] = {
+                    ...trackerData[functionalityID],
+                    ...dynamicUpdate,
+                };
 
                 appendTestHistory(functionalityID, testResult);
             });
@@ -90,7 +132,7 @@ async function runJestTests() {
         await writeTrackerFile(trackerData);
 
         // Optionally, clean up the Jest result file
-        await fs.unlink('testResults.json');
+        await fs.unlink("testResults.json");
     });
 }
 
