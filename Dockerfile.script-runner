@@ -8,6 +8,9 @@ RUN apk update && \
 # Install Prettier globally using npm
 RUN npm install -g prettier
 
+# Copy .prettierrc file into the container
+COPY .prettierrc /root/.prettierrc
+
 # Set custom Git configuration in the container
 RUN printf "[includeIf \"gitdir:personal/\"]\n\tpath = .gitconfig-personal\n\n\
     [includeIf \"gitdir:company/\"]\n\tpath = .gitconfig-company\n\n\
