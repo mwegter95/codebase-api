@@ -3,7 +3,7 @@ FROM script-runner:latest
 
 # Install Git and Node.js
 RUN apk update && \
-    apk add --no-cache git tree nodejs npm curl
+    apk add --no-cache git tree nodejs npm curl jq
 
 # Install Prettier globally using npm
 RUN npm install -g prettier

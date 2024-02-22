@@ -1,1 +1,21 @@
-{}
+{
+  "1-APPLICATION-STARTUP": {
+    "FunctionalityID": "1-APPLICATION-STARTUP",
+    "TestFileLocation": "./tests/startup.test.ts",
+    "ExpectedTestOutput": "Application starts successfully",
+    "TestFrequency": "On Commit",
+    "Priority": "High",
+    "Notes": "Critical for application functionality"
+  },
+  "2-HEALTHCHECK-URL": {
+    "FunctionalityID": "2-HEALTHCHECK-URL",
+    "TestFileLocation": "./tests/healthCheck.test.ts",
+    "ExpectedTestOutput": "Health check endpoint returns 200 OK",
+    "Dependencies": [
+      "Express server running"
+    ],
+    "TestFrequency": "On Commit",
+    "Priority": "High",
+    "Notes": "Ensures the health check endpoint is responsive"
+  }
+}

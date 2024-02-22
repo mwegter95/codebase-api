@@ -1,9 +1,9 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import { exec } from 'child_process';
+import { promises as fs } from "fs";
+import path from "path";
+import { exec } from "child_process";
 
-const trackerFilePath = path.join(__dirname, 'functionalityTracker.json');
-const historyFilePath = path.join(__dirname, 'testHistory.json');
+const trackerFilePath = path.join(__dirname, "functionalityTracker.json");
+const historyFilePath = path.join(__dirname, "testHistory.json");
 
 interface TestResult {
     functionalityID: string;
@@ -12,7 +12,6 @@ interface TestResult {
     duration: number;
 }
 
-// Define the type for the history data object
 interface HistoryData {
     [functionalityID: string]: TestResult[];
 }
@@ -23,12 +22,16 @@ async function readTrackerFile(): Promise<any> {
         return JSON.parse(data);
     } catch (error) {
         console.error("Error reading tracker file:", error);
-        return {}; // Return empty object if file does not exist or cannot be read
+        return {};
     }
 }
 
 async function writeTrackerFile(trackerData: any): Promise<void> {
-    await fs.writeFile(trackerFilePath, JSON.stringify(trackerData, null, 2), 'utf8');
+    await fs.writeFile(
+        trackerFilePath,
+        JSON.stringify(trackerData, null, 2),
+        "utf8"
+    );
 }
 
 async function appendTestHistory(
@@ -37,9 +40,11 @@ async function appendTestHistory(
 ): Promise<void> {
     try {
         let historyData: HistoryData = {};
-        const historyJson = await fs.readFile(historyFilePath, "utf8");
-        if (historyJson) {
+        try {
+            const historyJson = await fs.readFile(historyFilePath, "utf8");
             historyData = JSON.parse(historyJson);
+        } catch (readError) {
+            console.log("History file not found, creating a new one.");
         }
 
         if (!historyData[functionalityID]) {
@@ -59,25 +64,28 @@ async function appendTestHistory(
 }
 
 async function runJestTests() {
-    const outputDirectory = path.join(__dirname, "..", "src"); // Adjust the path as necessary
-    const testResultsPath = path.join(outputDirectory, "testResults.json");
-    const command = `jest --json --outputFile=${testResultsPath} --outputDirectory=${outputDirectory}`;
+    const command = `jest --json --outputFile=testResults.json`;
 
     exec(command, async (error, stdout, stderr) => {
         if (error) {
-            console.error("Error executing Jest tests:", stderr);
+            console.error(`Error executing Jest tests: ${stderr}`);
             return;
         }
 
-        const jestResults = JSON.parse(
-            await fs.readFile(testResultsPath, "utf8")
-        );
+        let jestResults;
+        try {
+            jestResults = JSON.parse(
+                await fs.readFile("testResults.json", "utf8")
+            );
+        } catch (parseError) {
+            console.error(`Error parsing Jest results: ${parseError}`);
+            return;
+        }
 
-        console.log("Jest results:", jestResults); // Debug console log
+        console.log("Jest results:", jestResults);
 
         const trackerData = await readTrackerFile();
-
-        console.log("Tracker data:", trackerData); // Debug console log
+        console.log("Tracker data:", trackerData);
 
         if (!jestResults || !jestResults.testResults) {
             console.error("No test results found.");
@@ -85,54 +93,47 @@ async function runJestTests() {
         }
 
         jestResults.testResults.forEach((testSuite: any) => {
-            if (!testSuite.testResults) {
+            if (!testSuite.assertionResults) {
                 console.error("No test results found for suite:", testSuite);
                 return;
             }
 
-            testSuite.testResults.forEach((result: any) => {
-                console.log("Processing test result:", result); // Debug console log
+            testSuite.assertionResults.forEach(async (result: any) => {
+                console.log("Processing test result:", result);
 
-                const functionalityID = result.ancestorTitles[0];
+                const functionalityID = result.fullName.split(" ")[0];
                 const testResult: TestResult = {
-                    functionalityID: functionalityID,
+                    functionalityID,
                     status: result.status,
-                    message: result.title,
-                    duration: result.duration,
+                    message: result.fullName,
+                    duration: result.duration ?? 0,
                 };
 
-                if (!trackerData) {
-                    console.error("Tracker data is undefined.");
+                if (!trackerData[functionalityID]) {
+                    console.error(
+                        `Functionality ID ${functionalityID} not found in tracker.`
+                    );
                     return;
                 }
 
-                if (!trackerData[functionalityID]) {
-                    trackerData[functionalityID] = {};
-                }
+                // Update tracker data here based on testResult
+                // This snippet assumes dynamicUpdate is properly defined elsewhere
 
-                const dynamicUpdate = {
-                    LastTestResult:
-                        testResult.status === "passed" ? "Passed" : "Failed",
-                    LastTestTime: new Date().toISOString(),
-                    LastTestOutput: testResult.message,
-                    LastOutputMatchesExpected:
-                        testResult.status === "passed" ? "Yes" : "No",
-                    LastUpdated: new Date().toISOString(),
-                };
-
-                trackerData[functionalityID] = {
-                    ...trackerData[functionalityID],
-                    ...dynamicUpdate,
-                };
-
-                appendTestHistory(functionalityID, testResult);
+                await appendTestHistory(functionalityID, testResult);
             });
         });
 
         await writeTrackerFile(trackerData);
 
-        // Optionally, clean up the Jest result file
-        await fs.unlink("testResults.json");
+        try {
+            await fs.unlink("testResults.json");
+            console.log("Test results file cleaned up.");
+        } catch (cleanupError) {
+            console.error(
+                "Error during test results file cleanup:",
+                cleanupError
+            );
+        }
     });
 }
 

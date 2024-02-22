@@ -1,0 +1,1 @@
+{"FunctionalityID":"2-HEALTHCHECK-URL","TestFileLocation":"./tests/healthCheck.test.ts","ExpectedTestOutput":"Health check endpoint returns 200 OK","Dependencies":["Express server running"],"TestFrequency":"On Commit","Priority":"High","Notes":"Ensures the health check endpoint is responsive"}
