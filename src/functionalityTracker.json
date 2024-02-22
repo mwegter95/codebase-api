@@ -5,7 +5,12 @@
     "ExpectedTestOutput": "Application starts successfully",
     "TestFrequency": "On Commit",
     "Priority": "High",
-    "Notes": "Critical for application functionality"
+    "Notes": "Critical for application functionality",
+    "LastTestResult": "Passed",
+    "LastTestTime": "2024-02-22T23:47:21.284Z",
+    "LastTestOutput": "1-APPLICATION-STARTUP Application starts successfully",
+    "LastOutputMatchesExpected": "Yes",
+    "LastUpdated": "2024-02-22T23:47:21.284Z"
   },
   "2-HEALTHCHECK-URL": {
     "FunctionalityID": "2-HEALTHCHECK-URL",
@@ -16,6 +21,11 @@
     ],
     "TestFrequency": "On Commit",
     "Priority": "High",
-    "Notes": "Ensures the health check endpoint is responsive"
+    "Notes": "Ensures the health check endpoint is responsive",
+    "LastTestResult": "Passed",
+    "LastTestTime": "2024-02-22T23:47:21.284Z",
+    "LastTestOutput": "2-HEALTHCHECK-URL Health check endpoint returns 200 OK",
+    "LastOutputMatchesExpected": "Yes",
+    "LastUpdated": "2024-02-22T23:47:21.284Z"
   }
 }

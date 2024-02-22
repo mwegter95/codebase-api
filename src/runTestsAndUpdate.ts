@@ -38,29 +38,25 @@ async function appendTestHistory(
     functionalityID: string,
     testResult: TestResult
 ): Promise<void> {
+    let historyData: HistoryData = {};
     try {
-        let historyData: HistoryData = {};
-        try {
-            const historyJson = await fs.readFile(historyFilePath, "utf8");
-            historyData = JSON.parse(historyJson);
-        } catch (readError) {
-            console.log("History file not found, creating a new one.");
-        }
-
-        if (!historyData[functionalityID]) {
-            historyData[functionalityID] = [];
-        }
-
-        historyData[functionalityID].push(testResult);
-
-        await fs.writeFile(
-            historyFilePath,
-            JSON.stringify(historyData, null, 2),
-            "utf8"
-        );
-    } catch (error) {
-        console.error("Error appending test history:", error);
+        const historyJson = await fs.readFile(historyFilePath, "utf8");
+        historyData = JSON.parse(historyJson);
+    } catch (readError) {
+        console.log("History file not found, creating a new one.");
     }
+
+    if (!historyData[functionalityID]) {
+        historyData[functionalityID] = [];
+    }
+
+    historyData[functionalityID].push(testResult);
+
+    await fs.writeFile(
+        historyFilePath,
+        JSON.stringify(historyData, null, 2),
+        "utf8"
+    );
 }
 
 async function runJestTests() {
@@ -85,7 +81,6 @@ async function runJestTests() {
         console.log("Jest results:", jestResults);
 
         const trackerData = await readTrackerFile();
-        console.log("Tracker data:", trackerData);
 
         if (!jestResults || !jestResults.testResults) {
             console.error("No test results found.");
@@ -109,15 +104,21 @@ async function runJestTests() {
                     duration: result.duration ?? 0,
                 };
 
-                if (!trackerData[functionalityID]) {
-                    console.error(
-                        `Functionality ID ${functionalityID} not found in tracker.`
-                    );
-                    return;
-                }
+                // Dynamic update logic
+                const dynamicUpdate = {
+                    LastTestResult:
+                        testResult.status === "passed" ? "Passed" : "Failed",
+                    LastTestTime: new Date().toISOString(),
+                    LastTestOutput: testResult.message,
+                    LastOutputMatchesExpected:
+                        testResult.status === "passed" ? "Yes" : "No",
+                    LastUpdated: new Date().toISOString(),
+                };
 
-                // Update tracker data here based on testResult
-                // This snippet assumes dynamicUpdate is properly defined elsewhere
+                trackerData[functionalityID] = {
+                    ...trackerData[functionalityID],
+                    ...dynamicUpdate,
+                };
 
                 await appendTestHistory(functionalityID, testResult);
             });
