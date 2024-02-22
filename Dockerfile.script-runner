@@ -3,10 +3,15 @@ FROM script-runner:latest
 
 # Install Git and Node.js
 RUN apk update && \
-    apk add --no-cache git tree nodejs npm
+    apk add --no-cache git tree nodejs npm curl
 
 # Install Prettier globally using npm
 RUN npm install -g prettier
+
+# Install TypeScript globally.
+RUN npm install -g typescript ts-node
+# Depending on configuration, you may also need these
+RUN npm install -D tslib @types/node
 
 # Copy .prettierrc file into the container
 COPY .prettierrc /root/.prettierrc
