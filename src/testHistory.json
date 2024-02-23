@@ -1,0 +1,10 @@
+{
+  "1-APPLICATION-STARTUP": [
+    "2024-02-23T17:39:02.938Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 2ms, Regression detected: No",
+    "2024-02-23T17:38:35.913Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 2ms, Regression detected: No"
+  ],
+  "2-HEALTHCHECK-URL": [
+    "2024-02-23T17:39:02.940Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 1ms, Regression detected: No",
+    "2024-02-23T17:38:35.915Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 1ms, Regression detected: No"
+  ]
+}

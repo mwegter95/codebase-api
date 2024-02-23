@@ -13,7 +13,7 @@ interface TestResult {
 }
 
 interface HistoryData {
-    [functionalityID: string]: TestResult[];
+    [functionalityID: string]: string[];
 }
 
 async function readTrackerFile(): Promise<any> {
@@ -34,6 +34,23 @@ async function writeTrackerFile(trackerData: any): Promise<void> {
     );
 }
 
+async function ensureHistoryFile(): Promise<HistoryData> {
+    try {
+        const historyJson = await fs.readFile(historyFilePath, "utf8");
+        return JSON.parse(historyJson);
+    } catch {
+        // If the history file does not exist, initialize and create it
+        console.log("History file not found, initializing a new one.");
+        const initialData = {};
+        await fs.writeFile(
+            historyFilePath,
+            JSON.stringify(initialData, null, 2),
+            "utf8"
+        );
+        return initialData;
+    }
+}
+
 async function appendTestHistory(
     functionalityID: string,
     testResult: TestResult
@@ -42,22 +59,52 @@ async function appendTestHistory(
     try {
         const historyJson = await fs.readFile(historyFilePath, "utf8");
         historyData = JSON.parse(historyJson);
-    } catch (readError) {
+    } catch (error) {
         console.log("History file not found, creating a new one.");
     }
+
+    // Initialize regressionDetected as 'No'
+    let regressionDetected = "No";
+
+    // Check the last result for this functionalityID, if it exists
+    if (
+        historyData[functionalityID] &&
+        historyData[functionalityID].length > 0
+    ) {
+        const lastResultString = historyData[functionalityID][0];
+        // Assuming the status is always formatted as "Status: passed" or "Status: failed" in the result string
+        if (
+            lastResultString.includes("Status: passed") &&
+            testResult.status === "failed"
+        ) {
+            regressionDetected = "Yes";
+        }
+    }
+
+    // Create the result string with all details, including regression detection
+    const resultString = `${new Date().toISOString()}: Test '${
+        testResult.functionalityID
+    }' - Status: ${testResult.status}, Message: '${
+        testResult.message
+    }', Duration: ${
+        testResult.duration
+    }ms, Regression detected: ${regressionDetected}`;
 
     if (!historyData[functionalityID]) {
         historyData[functionalityID] = [];
     }
 
-    historyData[functionalityID].push(testResult);
+    // Prepend the new result to the history array
+    historyData[functionalityID].unshift(resultString);
 
+    // Write the updated history data back to the file
     await fs.writeFile(
         historyFilePath,
         JSON.stringify(historyData, null, 2),
         "utf8"
     );
 }
+
 
 async function runJestTests() {
     const command = `jest --json --outputFile=testResults.json`;
@@ -87,13 +134,8 @@ async function runJestTests() {
             return;
         }
 
-        jestResults.testResults.forEach((testSuite: any) => {
-            if (!testSuite.assertionResults) {
-                console.error("No test results found for suite:", testSuite);
-                return;
-            }
-
-            testSuite.assertionResults.forEach(async (result: any) => {
+        for (const testSuite of jestResults.testResults) {
+            for (const result of testSuite.assertionResults) {
                 console.log("Processing test result:", result);
 
                 const functionalityID = result.fullName.split(" ")[0];
@@ -104,7 +146,6 @@ async function runJestTests() {
                     duration: result.duration ?? 0,
                 };
 
-                // Dynamic update logic
                 const dynamicUpdate = {
                     LastTestResult:
                         testResult.status === "passed" ? "Passed" : "Failed",
@@ -121,8 +162,8 @@ async function runJestTests() {
                 };
 
                 await appendTestHistory(functionalityID, testResult);
-            });
-        });
+            }
+        }
 
         await writeTrackerFile(trackerData);
 

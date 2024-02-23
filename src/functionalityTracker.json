@@ -7,10 +7,10 @@
     "Priority": "High",
     "Notes": "Critical for application functionality",
     "LastTestResult": "Passed",
-    "LastTestTime": "2024-02-22T23:47:21.284Z",
+    "LastTestTime": "2024-02-23T17:39:02.938Z",
     "LastTestOutput": "1-APPLICATION-STARTUP Application starts successfully",
     "LastOutputMatchesExpected": "Yes",
-    "LastUpdated": "2024-02-22T23:47:21.284Z"
+    "LastUpdated": "2024-02-23T17:39:02.938Z"
   },
   "2-HEALTHCHECK-URL": {
     "FunctionalityID": "2-HEALTHCHECK-URL",
@@ -23,9 +23,9 @@
     "Priority": "High",
     "Notes": "Ensures the health check endpoint is responsive",
     "LastTestResult": "Passed",
-    "LastTestTime": "2024-02-22T23:47:21.284Z",
+    "LastTestTime": "2024-02-23T17:39:02.940Z",
     "LastTestOutput": "2-HEALTHCHECK-URL Health check endpoint returns 200 OK",
     "LastOutputMatchesExpected": "Yes",
-    "LastUpdated": "2024-02-22T23:47:21.284Z"
+    "LastUpdated": "2024-02-23T17:39:02.940Z"
   }
 }
