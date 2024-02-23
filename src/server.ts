@@ -7,18 +7,21 @@ import path from "path";
 import dotenv from "dotenv";
 import axios from "axios";
 import morgan from "morgan";
-import { createServer } from "http";
+import { Server, createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
 
 dotenv.config();
 
 const app = express();
+const appTest = express()
+appTest.use(app) // make appTest use all the same middleware and endpoints as the app
 const port = 3003;
 console.log(process.env.CODEBASE_PATH);
 const codebasePath =
     process.env.CODEBASE_PATH ||
     "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test";
 const httpServer = createServer(app);
+const httpTestServer = createServer(appTest);
 const devTestPath =
     "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test"; // Adjust as necessary
 
@@ -287,3 +290,14 @@ app.get("/health", (req: Request, res: Response) => {
 httpServer.listen(port, () => {
     console.log(`Server with Websockets running at http://localhost:${port}`);
 });
+
+export function startTestServer(testPort: Number): Promise<Server> {
+    return new Promise((resolve, reject) => {
+        const server = httpTestServer
+            .listen(testPort, () => {
+                console.log(`Test server started on port ${testPort}`);
+                resolve(server);
+            })
+            .on("error", reject);
+    });
+}

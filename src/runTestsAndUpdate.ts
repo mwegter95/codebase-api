@@ -1,9 +1,14 @@
 import { promises as fs } from "fs";
 import path from "path";
-import { exec } from "child_process";
+import { exec as execCallback } from "child_process";
+import { startTestServer } from "./server";
+// import axios from "axios";
+import { promisify } from "util";
+const exec = promisify(execCallback);
 
 const trackerFilePath = path.join(__dirname, "functionalityTracker.json");
 const historyFilePath = path.join(__dirname, "testHistory.json");
+const TEST_PORT = 3111; // Specify a test-specific port
 
 interface TestResult {
     functionalityID: string;
@@ -107,13 +112,27 @@ async function appendTestHistory(
 
 
 async function runJestTests() {
-    const command = `jest --json --outputFile=testResults.json`;
+    try {
+        // Await the server to start
+        const server = await startTestServer(TEST_PORT);
+        console.log("Server started, running tests...");
+        // const baseURL = `http://localhost:${TEST_PORT}`;
+        // let healthResultBeforeTests = await axios.get(`${baseURL}/health`);
+        // console.log(healthResultBeforeTests, {healthResultBeforeTests})
 
-    exec(command, async (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error executing Jest tests: ${stderr}`);
-            return;
+        const command = `jest --json --outputFile=testResults.json`;
+
+        // Run Jest tests
+        const { stdout, stderr } = await exec(
+            `jest --json --verbose --outputFile=testResults.json`
+        );
+        if (stderr) {
+            console.log(stderr);
         }
+        if (stdout) {
+            console.log(stdout);
+        }
+        console.log("Jest tests completed");
 
         let jestResults;
         try {
@@ -122,10 +141,11 @@ async function runJestTests() {
             );
         } catch (parseError) {
             console.error(`Error parsing Jest results: ${parseError}`);
-            return;
+            server.close(); // Ensure the server is closed on parsing error
+            process.exit(1); // Exit with non-zero exit code
         }
 
-        console.log("Jest results:", jestResults);
+        // console.log("Jest results:", jestResults);
 
         const trackerData = await readTrackerFile();
 
@@ -167,16 +187,25 @@ async function runJestTests() {
 
         await writeTrackerFile(trackerData);
 
+        // Cleanup
+        server.close(); // Close the server after processing test results
+        console.log("Test server stopped.");
+
         try {
             await fs.unlink("testResults.json");
             console.log("Test results file cleaned up.");
+            process.exit(0); // Exit with successful zero exit code
         } catch (cleanupError) {
             console.error(
                 "Error during test results file cleanup:",
                 cleanupError
             );
+            process.exit(1); // Exit with non-zero exit code
         }
-    });
+    } catch (error) {
+        console.error("An error occurred:", error);
+        process.exit(1); // Exit with non-zero exit code
+    }
 }
 
 runJestTests();

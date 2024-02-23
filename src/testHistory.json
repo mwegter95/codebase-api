@@ -1,9 +1,23 @@
 {
   "1-APPLICATION-STARTUP": [
+    "2024-02-23T23:27:14.854Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 2ms, Regression detected: No",
+    "2024-02-23T23:25:54.098Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 1ms, Regression detected: No",
+    "2024-02-23T23:25:10.247Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 1ms, Regression detected: No",
+    "2024-02-23T23:15:53.727Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 2ms, Regression detected: No",
+    "2024-02-23T23:10:45.608Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 1ms, Regression detected: No",
+    "2024-02-23T22:56:20.423Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 1ms, Regression detected: No",
+    "2024-02-23T22:54:45.464Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 1ms, Regression detected: No",
     "2024-02-23T17:39:02.938Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 2ms, Regression detected: No",
     "2024-02-23T17:38:35.913Z: Test '1-APPLICATION-STARTUP' - Status: passed, Message: '1-APPLICATION-STARTUP Application starts successfully', Duration: 2ms, Regression detected: No"
   ],
   "2-HEALTHCHECK-URL": [
+    "2024-02-23T23:27:14.853Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 34ms, Regression detected: No",
+    "2024-02-23T23:25:54.096Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 33ms, Regression detected: No",
+    "2024-02-23T23:25:10.246Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 34ms, Regression detected: No",
+    "2024-02-23T23:15:53.726Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 31ms, Regression detected: No",
+    "2024-02-23T23:10:45.607Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 35ms, Regression detected: No",
+    "2024-02-23T22:56:20.422Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 31ms, Regression detected: No",
+    "2024-02-23T22:54:45.463Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 22ms, Regression detected: No",
     "2024-02-23T17:39:02.940Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 1ms, Regression detected: No",
     "2024-02-23T17:38:35.915Z: Test '2-HEALTHCHECK-URL' - Status: passed, Message: '2-HEALTHCHECK-URL Health check endpoint returns 200 OK', Duration: 1ms, Regression detected: No"
   ]
