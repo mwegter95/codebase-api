@@ -12,6 +12,8 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@babel/parser": "^7.23.9",
+        "@babel/traverse": "^7.23.9",
         "@types/morgan": "^1.9.9",
         "axios": "^1.6.7",
         "dotenv": "^16.4.5",
@@ -19,7 +21,8 @@
         "jest-environment-node": "^29.7.0",
         "morgan": "^1.10.0",
         "socket.io": "^4.7.4",
-        "ts-node": "^10.9.2"
+        "ts-node": "^10.9.2",
+        "tsc": "^2.0.4"
     },
     "devDependencies": {
         "@babel/core": "^7.23.9",
