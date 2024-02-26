@@ -7,66 +7,102 @@ async function getAllFiles(
     dirPath: string,
     arrayOfFiles: string[] = []
 ): Promise<string[]> {
-    const files = await fs.readdir(dirPath);
-    for (const file of files) {
-        const fullPath = path.join(dirPath, file);
-        if ((await fs.stat(fullPath)).isDirectory()) {
-            arrayOfFiles = await getAllFiles(fullPath, arrayOfFiles);
-        } else {
-            arrayOfFiles.push(fullPath);
+    try {
+        const files = await fs.readdir(dirPath);
+        for (const file of files) {
+            const fullPath = path.join(dirPath, file);
+            if ((await fs.stat(fullPath)).isDirectory()) {
+                arrayOfFiles = await getAllFiles(fullPath, arrayOfFiles);
+            } else {
+                arrayOfFiles.push(fullPath);
+            }
         }
+        return arrayOfFiles;
+    } catch (error) {
+        throw new Error(
+            `Error while reading files in directory ${dirPath}: ${error}`
+        );
     }
-    return arrayOfFiles;
 }
 
 async function extractNamedFunctionsFromSource(
     sourceCode: string
 ): Promise<Set<string>> {
-    const namedFunctions = new Set<string>();
-    const ast = parser.parse(sourceCode, {
-        sourceType: "module",
-        plugins: ["typescript", "classProperties", "decorators-legacy", "jsx"],
-    });
+    try {
+        const namedFunctions = new Set<string>();
+        const ast = parser.parse(sourceCode, {
+            sourceType: "module",
+            plugins: [
+                "typescript",
+                "classProperties",
+                "decorators-legacy",
+                "jsx",
+            ],
+        });
 
-    traverse(ast, {
-        FunctionDeclaration(path) {
-            if (path.node.id) {
-                namedFunctions.add(path.node.id.name);
-            }
-        },
-        VariableDeclaration(path) {
-            path.node.declarations.forEach((declaration) => {
-                if (
-                    declaration.id.type === "Identifier" &&
-                    declaration.init?.type === "ArrowFunctionExpression"
-                ) {
-                    namedFunctions.add(declaration.id.name);
+        traverse(ast, {
+            FunctionDeclaration(path) {
+                try {
+                    if (path.node.id) {
+                        namedFunctions.add(path.node.id.name);
+                    }
+                } catch (error) {
+                    throw new Error(
+                        `Error while extracting function name: ${error}`
+                    );
                 }
-            });
-        },
-        // Add more visitors as needed
-    });
+            },
+            VariableDeclaration(path) {
+                try {
+                    path.node.declarations.forEach((declaration) => {
+                        if (
+                            declaration.id.type === "Identifier" &&
+                            declaration.init?.type === "ArrowFunctionExpression"
+                        ) {
+                            namedFunctions.add(declaration.id.name);
+                        }
+                    });
+                } catch (error) {
+                    throw new Error(
+                        `Error while extracting variable name: ${error}`
+                    );
+                }
+            },
+            // Add more visitors as needed
+        });
 
-    return namedFunctions;
+        return namedFunctions;
+    } catch (error) {
+        throw new Error(`Error while traversing AST: ${error}`);
+    }
 }
+
 
 async function generateFunctionListForCodebase(
     directoryPath: string
 ): Promise<Set<string>> {
-    let allNamedFunctions = new Set<string>();
-    const allFiles = await getAllFiles(directoryPath);
+    try {
+        let allNamedFunctions = new Set<string>();
+        const allFiles = await getAllFiles(directoryPath);
 
-    for (const file of allFiles) {
-        if (file.endsWith(".js") || file.endsWith(".ts")) {
-            const content = await fs.readFile(file, "utf8");
-            const fileFunctions = await extractNamedFunctionsFromSource(
-                content
-            );
-            fileFunctions.forEach((fnName) => allNamedFunctions.add(fnName));
+        for (const file of allFiles) {
+            if (file.endsWith(".js") || file.endsWith(".ts")) {
+                const content = await fs.readFile(file, "utf8");
+                const fileFunctions = await extractNamedFunctionsFromSource(
+                    content
+                );
+                fileFunctions.forEach((fnName) =>
+                    allNamedFunctions.add(fnName)
+                );
+            }
         }
-    }
 
-    return allNamedFunctions;
+        return allNamedFunctions;
+    } catch (error) {
+        throw new Error(
+            `Error while generating function list for codebase: ${error}`
+        );
+    }
 }
 
 async function updateFunctionsListHistory(
@@ -74,75 +110,96 @@ async function updateFunctionsListHistory(
     currentPath: string,
     historyPath: string
 ): Promise<void> {
-    let previousList: string[] = [];
     try {
-        const currentContent = await fs.readFile(currentPath, "utf8");
-        previousList = JSON.parse(currentContent);
+        let previousList: string[] = [];
+        try {
+            const currentContent = await fs.readFile(currentPath, "utf8");
+            previousList = JSON.parse(currentContent);
+        } catch (error) {
+            console.log(
+                "No previous functions list found. Assuming this is the first run."
+            );
+        }
+
+        const added = Array.from(newFunctionsList).filter(
+            (fn) => !previousList.includes(fn)
+        );
+        const removed = previousList.filter((fn) => !newFunctionsList.has(fn));
+
+        if (added.length === 0 && removed.length === 0) {
+            console.log("No changes in named functions detected.");
+            return; // Exit if there are no changes to avoid unnecessary history entries
+        }
+
+        const changes = {
+            timestamp: new Date().toISOString(),
+            added,
+            removed,
+        };
+
+        let history = [];
+        try {
+            history = JSON.parse(await fs.readFile(historyPath, "utf8"));
+        } catch (error) {
+            console.log("Creating a new history file.");
+        }
+
+        history.push(changes);
+        await fs.writeFile(
+            historyPath,
+            JSON.stringify(history, null, 2),
+            "utf8"
+        );
     } catch (error) {
-        console.log(
-            "No previous functions list found. Assuming this is the first run."
+        throw new Error(
+            `Error while updating functions list history: ${error}`
         );
     }
-
-    const added = Array.from(newFunctionsList).filter(
-        (fn) => !previousList.includes(fn)
-    );
-    const removed = previousList.filter((fn) => !newFunctionsList.has(fn));
-
-    if (added.length === 0 && removed.length === 0) {
-        console.log("No changes in named functions detected.");
-        return; // Exit if there are no changes to avoid unnecessary history entries
-    }
-
-    const changes = {
-        timestamp: new Date().toISOString(),
-        added,
-        removed,
-    };
-
-    let history = [];
-    try {
-        history = JSON.parse(await fs.readFile(historyPath, "utf8"));
-    } catch (error) {
-        console.log("Creating a new history file.");
-    }
-
-    history.push(changes);
-    await fs.writeFile(historyPath, JSON.stringify(history, null, 2), "utf8");
 }
 
 async function writeFunctionsListToFile(
     functionsList: Set<string>,
     filePath: string
 ): Promise<void> {
-    await fs.writeFile(
-        filePath,
-        JSON.stringify(Array.from(functionsList), null, 2),
-        "utf8"
-    );
+    try {
+        await fs.writeFile(
+            filePath,
+            JSON.stringify(Array.from(functionsList), null, 2),
+            "utf8"
+        );
+    } catch (error) {
+        throw new Error(`Error while writing functions list to file: ${error}`);
+    }
 }
 
 // The main function that orchestrates generating the functions list and updating history
 async function generateAndTrackFunctionList(codebasePath: string) {
-    const currentFunctionsListPath = path.join(
-        codebasePath,
-        "currentFunctionsList.json"
-    );
-    const functionsListHistoryPath = path.join(
-        codebasePath,
-        "functionsListHistory.json"
-    );
+    try {
+        const currentFunctionsListPath = path.join(
+            codebasePath,
+            "currentFunctionsList.json"
+        );
+        const functionsListHistoryPath = path.join(
+            codebasePath,
+            "functionsListHistory.json"
+        );
 
-    const allNamedFunctions = await generateFunctionListForCodebase(
-        codebasePath
-    );
-    await updateFunctionsListHistory(
-        allNamedFunctions,
-        currentFunctionsListPath,
-        functionsListHistoryPath
-    );
-    await writeFunctionsListToFile(allNamedFunctions, currentFunctionsListPath);
-    console.log("Named functions list and history updated.");
+        const allNamedFunctions = await generateFunctionListForCodebase(
+            codebasePath
+        );
+        await updateFunctionsListHistory(
+            allNamedFunctions,
+            currentFunctionsListPath,
+            functionsListHistoryPath
+        );
+        await writeFunctionsListToFile(
+            allNamedFunctions,
+            currentFunctionsListPath
+        );
+        console.log("Named functions list and history updated.");
+    } catch (error) {
+        console.error("Error:", error);
+    }
 }
 
 // Example usage
