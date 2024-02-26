@@ -1,7 +1,6 @@
 import { promises as fs } from "fs";
 import * as path from "path";
-import * as esprima from "esprima";
-import { traverse } from "estraverse";
+import * as ts from "typescript";
 
 async function getAllFiles(
     dirPath: string,
@@ -29,37 +28,56 @@ async function extractNamedFunctionsFromSource(
     sourceCode: string
 ): Promise<Set<string>> {
     try {
-        console.log("Source code:", sourceCode); // Log the source code before parsing
         const namedFunctions = new Set<string>();
-        const ast = esprima.parseScript(sourceCode, { loc: true });
+        const sourceFile = ts.createSourceFile(
+            "temp.ts",
+            sourceCode,
+            ts.ScriptTarget.Latest
+        );
 
-        traverse(ast, {
-            enter: function (node) {
-                if (node.type === "FunctionDeclaration" && node.id) {
-                    namedFunctions.add(node.id.name);
-                } else if (
-                    node.type === "VariableDeclaration" &&
-                    node.declarations
-                ) {
-                    node.declarations.forEach((declaration) => {
-                        if (
-                            declaration.type === "VariableDeclarator" &&
-                            declaration.id.type === "Identifier" &&
-                            declaration.init &&
-                            declaration.init.type === "ArrowFunctionExpression"
-                        ) {
-                            namedFunctions.add(declaration.id.name);
-                        }
-                    });
+        function visit(node: ts.Node) {
+            try {
+                if (!node) {
+                    console.log("Encountered undefined node");
+                    return;
                 }
-            },
-        });
 
+                // console.log("Visiting node of type:", ts.SyntaxKind[node.kind]);
+
+                if (
+                    ts.isFunctionDeclaration(node) &&
+                    node.name &&
+                    ts.isIdentifier(node.name)
+                ) {
+                    namedFunctions.add(node.name.getText(sourceFile));
+                } else if (
+                    ts.isVariableDeclaration(node) &&
+                    node.name &&
+                    ts.isIdentifier(node.name)
+                ) {
+                    if (
+                        node.initializer &&
+                        ts.isArrowFunction(node.initializer)
+                    ) {
+                        namedFunctions.add(node.name.getText(sourceFile));
+                    }
+                }
+                ts.forEachChild(node, visit);
+            } catch (error) {
+                console.error("Error while visiting node:", error);
+            }
+        }
+
+        ts.forEachChild(sourceFile, visit);
         return namedFunctions;
     } catch (error) {
         throw new Error(`Error while extracting named functions: ${error}`);
     }
 }
+
+
+
+
 
 async function generateFunctionListForCodebase(
     directoryPath: string
@@ -69,8 +87,7 @@ async function generateFunctionListForCodebase(
         const allFiles = await getAllFiles(directoryPath);
 
         for (const file of allFiles) {
-            if (file.endsWith(".js") || file.endsWith(".ts")) {
-                console.log(file)
+            if (file.endsWith(".ts")) {
                 const content = await fs.readFile(file, "utf8");
                 const fileFunctions = await extractNamedFunctionsFromSource(
                     content
@@ -146,9 +163,13 @@ async function writeFunctionsListToFile(
     filePath: string
 ): Promise<void> {
     try {
+        // Convert the set to an array and sort it alphabetically
+        const sortedFunctions = Array.from(functionsList).sort();
+
+        // Write the sorted functions list to the file
         await fs.writeFile(
             filePath,
-            JSON.stringify(Array.from(functionsList), null, 2),
+            JSON.stringify(sortedFunctions, null, 2),
             "utf8"
         );
     } catch (error) {
@@ -161,10 +182,12 @@ async function generateAndTrackFunctionList(codebasePath: string) {
     try {
         const currentFunctionsListPath = path.join(
             codebasePath,
+            "src/",
             "currentFunctionsList.json"
         );
         const functionsListHistoryPath = path.join(
             codebasePath,
+            "src/",
             "functionsListHistory.json"
         );
 
