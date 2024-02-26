@@ -1,7 +1,7 @@
 import { promises as fs } from "fs";
 import * as path from "path";
-import * as parser from "@babel/parser";
-import traverse from "@babel/traverse";
+import * as esprima from "esprima";
+import { traverse } from "estraverse";
 
 async function getAllFiles(
     dirPath: string,
@@ -29,54 +29,37 @@ async function extractNamedFunctionsFromSource(
     sourceCode: string
 ): Promise<Set<string>> {
     try {
+        console.log("Source code:", sourceCode); // Log the source code before parsing
         const namedFunctions = new Set<string>();
-        const ast = parser.parse(sourceCode, {
-            sourceType: "module",
-            plugins: [
-                "typescript",
-                "classProperties",
-                "decorators-legacy",
-                "jsx",
-            ],
-        });
+        const ast = esprima.parseScript(sourceCode, { loc: true });
 
         traverse(ast, {
-            FunctionDeclaration(path) {
-                try {
-                    if (path.node.id) {
-                        namedFunctions.add(path.node.id.name);
-                    }
-                } catch (error) {
-                    throw new Error(
-                        `Error while extracting function name: ${error}`
-                    );
-                }
-            },
-            VariableDeclaration(path) {
-                try {
-                    path.node.declarations.forEach((declaration) => {
+            enter: function (node) {
+                if (node.type === "FunctionDeclaration" && node.id) {
+                    namedFunctions.add(node.id.name);
+                } else if (
+                    node.type === "VariableDeclaration" &&
+                    node.declarations
+                ) {
+                    node.declarations.forEach((declaration) => {
                         if (
+                            declaration.type === "VariableDeclarator" &&
                             declaration.id.type === "Identifier" &&
-                            declaration.init?.type === "ArrowFunctionExpression"
+                            declaration.init &&
+                            declaration.init.type === "ArrowFunctionExpression"
                         ) {
                             namedFunctions.add(declaration.id.name);
                         }
                     });
-                } catch (error) {
-                    throw new Error(
-                        `Error while extracting variable name: ${error}`
-                    );
                 }
             },
-            // Add more visitors as needed
         });
 
         return namedFunctions;
     } catch (error) {
-        throw new Error(`Error while traversing AST: ${error}`);
+        throw new Error(`Error while extracting named functions: ${error}`);
     }
 }
-
 
 async function generateFunctionListForCodebase(
     directoryPath: string
@@ -87,6 +70,7 @@ async function generateFunctionListForCodebase(
 
         for (const file of allFiles) {
             if (file.endsWith(".js") || file.endsWith(".ts")) {
+                console.log(file)
                 const content = await fs.readFile(file, "utf8");
                 const fileFunctions = await extractNamedFunctionsFromSource(
                     content
