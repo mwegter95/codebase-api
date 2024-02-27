@@ -182,7 +182,7 @@ async function generateFunctionListForCodebase(
 async function updateFunctionsListHistory(
     newFunctionsList: Set<NamedFunction>,
     currentPath: string,
-    historyPath: string,
+    historyPath: string
 ): Promise<void> {
     try {
         let previousList: NamedFunction[] = [];
@@ -191,14 +191,20 @@ async function updateFunctionsListHistory(
             previousList = JSON.parse(currentContent);
         } catch (error) {
             console.log(
-                "No previous functions list found. Assuming this is the first run.",
+                "No previous functions list found. Assuming this is the first run."
             );
         }
 
-        const added = Array.from(newFunctionsList).filter(
-            (fn) => !previousList.includes(fn),
+        // Convert the newFunctionsList set to an array to enable comparison
+        const newFunctionArray = Array.from(newFunctionsList);
+
+        // Filter out functions that exist both in previous and new function lists
+        const added = newFunctionArray.filter(
+            (fn) => !previousList.some((prevFn) => prevFn.name === fn.name)
         );
-        const removed = previousList.filter((fn) => !newFunctionsList.has(fn));
+        const removed = previousList.filter(
+            (prevFn) => !newFunctionArray.some((fn) => fn.name === prevFn.name)
+        );
 
         if (added.length === 0 && removed.length === 0) {
             console.log("No changes in named functions detected.");
@@ -222,14 +228,15 @@ async function updateFunctionsListHistory(
         await fs.writeFile(
             historyPath,
             JSON.stringify(history, null, 2),
-            "utf8",
+            "utf8"
         );
     } catch (error) {
         throw new Error(
-            `Error while updating functions list history: ${error}`,
+            `Error while updating functions list history: ${error}`
         );
     }
 }
+
 
 async function writeFunctionsListToFile(
     functionsList: Set<NamedFunction>,
