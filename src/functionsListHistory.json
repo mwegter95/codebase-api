@@ -125,5 +125,289 @@
         "name": "readJsonFile"
       }
     ]
+  },
+  {
+    "timestamp": "2024-02-27T20:01:21.922Z",
+    "added": [
+      {
+        "name": "getAllFiles"
+      },
+      {
+        "name": "extractNamedFunctionsFromSource"
+      },
+      {
+        "name": "visit"
+      },
+      {
+        "name": "extractTestFileFromComments"
+      },
+      {
+        "name": "generateFunctionListForCodebase"
+      },
+      {
+        "name": "updateFunctionsListHistory"
+      },
+      {
+        "name": "writeFunctionsListToFile"
+      },
+      {
+        "name": "generateAndTrackFunctionList"
+      },
+      {
+        "name": "readTrackerFile"
+      },
+      {
+        "name": "writeTrackerFile"
+      },
+      {
+        "name": "ensureHistoryFile"
+      },
+      {
+        "name": "appendTestHistory"
+      },
+      {
+        "name": "runJestTests"
+      },
+      {
+        "name": "executeScript"
+      },
+      {
+        "name": "pollHealthCheck"
+      },
+      {
+        "name": "checkHealth"
+      },
+      {
+        "name": "startTestServer"
+      },
+      {
+        "name": "initTest"
+      },
+      {
+        "name": "initTestFromFiles"
+      },
+      {
+        "name": "readJsonFile"
+      }
+    ],
+    "removed": [
+      {
+        "name": "getAllFiles"
+      },
+      {
+        "name": "extractNamedFunctionsFromSource"
+      },
+      {
+        "name": "visit"
+      },
+      {
+        "name": "extractTestFileFromComments"
+      },
+      {
+        "name": "generateFunctionListForCodebase"
+      },
+      {
+        "name": "updateFunctionsListHistory"
+      },
+      {
+        "name": "writeFunctionsListToFile"
+      },
+      {
+        "name": "generateAndTrackFunctionList"
+      },
+      {
+        "name": "readTrackerFile"
+      },
+      {
+        "name": "writeTrackerFile"
+      },
+      {
+        "name": "ensureHistoryFile"
+      },
+      {
+        "name": "appendTestHistory"
+      },
+      {
+        "name": "runJestTests"
+      },
+      {
+        "name": "executeScript"
+      },
+      {
+        "name": "pollHealthCheck"
+      },
+      {
+        "name": "checkHealth"
+      },
+      {
+        "name": "startTestServer"
+      },
+      {
+        "name": "initTest"
+      },
+      {
+        "name": "initTestFromFiles"
+      },
+      {
+        "name": "readJsonFile"
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-02-27T20:18:48.699Z",
+    "added": [
+      {
+        "name": "getAllFiles"
+      },
+      {
+        "name": "extractNamedFunctionsFromSource"
+      },
+      {
+        "name": "visit"
+      },
+      {
+        "name": "extractTestFileFromComments"
+      },
+      {
+        "name": "generateFunctionListForCodebase"
+      },
+      {
+        "name": "updateFunctionsListHistory"
+      },
+      {
+        "name": "writeFunctionsListToFile"
+      },
+      {
+        "name": "generateAndTrackFunctionList"
+      },
+      {
+        "name": "readTrackerFile"
+      },
+      {
+        "name": "writeTrackerFile"
+      },
+      {
+        "name": "ensureHistoryFile"
+      },
+      {
+        "name": "appendTestHistory"
+      },
+      {
+        "name": "runJestTests"
+      },
+      {
+        "name": "executeScript"
+      },
+      {
+        "name": "POST_handler_\"_api_execute_script\""
+      },
+      {
+        "name": "POST_handler_\"_api_execute_dev-script\""
+      },
+      {
+        "name": "GET_handler_\"_api_codebase_tree\""
+      },
+      {
+        "name": "GET_handler_\"_api_codebase_file\""
+      },
+      {
+        "name": "GET_handler_\"_api_git_diff\""
+      },
+      {
+        "name": "GET_handler_\"_api_functionality_tracker\""
+      },
+      {
+        "name": "GET_handler_\"_api_dev-repo_start\""
+      },
+      {
+        "name": "pollHealthCheck"
+      },
+      {
+        "name": "checkHealth"
+      },
+      {
+        "name": "GET_handler_\"_api_dev-repo_test\""
+      },
+      {
+        "name": "GET_handler_\"_api_dev-repo_health\""
+      },
+      {
+        "name": "GET_handler_\"_health\""
+      },
+      {
+        "name": "startTestServer"
+      },
+      {
+        "name": "initTest"
+      },
+      {
+        "name": "initTestFromFiles"
+      },
+      {
+        "name": "readJsonFile"
+      }
+    ],
+    "removed": [
+      {
+        "name": "getAllFiles"
+      },
+      {
+        "name": "extractNamedFunctionsFromSource"
+      },
+      {
+        "name": "visit"
+      },
+      {
+        "name": "extractTestFileFromComments"
+      },
+      {
+        "name": "generateFunctionListForCodebase"
+      },
+      {
+        "name": "updateFunctionsListHistory"
+      },
+      {
+        "name": "writeFunctionsListToFile"
+      },
+      {
+        "name": "generateAndTrackFunctionList"
+      },
+      {
+        "name": "readTrackerFile"
+      },
+      {
+        "name": "writeTrackerFile"
+      },
+      {
+        "name": "ensureHistoryFile"
+      },
+      {
+        "name": "appendTestHistory"
+      },
+      {
+        "name": "runJestTests"
+      },
+      {
+        "name": "executeScript"
+      },
+      {
+        "name": "pollHealthCheck"
+      },
+      {
+        "name": "checkHealth"
+      },
+      {
+        "name": "startTestServer"
+      },
+      {
+        "name": "initTest"
+      },
+      {
+        "name": "initTestFromFiles"
+      },
+      {
+        "name": "readJsonFile"
+      }
+    ]
   }
 ]

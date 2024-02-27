@@ -42,10 +42,40 @@
     "name": "executeScript"
   },
   {
+    "name": "POST_handler_\"_api_execute_script\""
+  },
+  {
+    "name": "POST_handler_\"_api_execute_dev-script\""
+  },
+  {
+    "name": "GET_handler_\"_api_codebase_tree\""
+  },
+  {
+    "name": "GET_handler_\"_api_codebase_file\""
+  },
+  {
+    "name": "GET_handler_\"_api_git_diff\""
+  },
+  {
+    "name": "GET_handler_\"_api_functionality_tracker\""
+  },
+  {
+    "name": "GET_handler_\"_api_dev-repo_start\""
+  },
+  {
     "name": "pollHealthCheck"
   },
   {
     "name": "checkHealth"
+  },
+  {
+    "name": "GET_handler_\"_api_dev-repo_test\""
+  },
+  {
+    "name": "GET_handler_\"_api_dev-repo_health\""
+  },
+  {
+    "name": "GET_handler_\"_health\""
   },
   {
     "name": "startTestServer"

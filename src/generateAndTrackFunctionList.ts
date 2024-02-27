@@ -4,7 +4,7 @@ import * as ts from "typescript";
 
 async function getAllFiles(
     dirPath: string,
-    arrayOfFiles: string[] = []
+    arrayOfFiles: string[] = [],
 ): Promise<string[]> {
     try {
         const files = await fs.readdir(dirPath);
@@ -23,7 +23,7 @@ async function getAllFiles(
         return arrayOfFiles;
     } catch (error) {
         throw new Error(
-            `Error while reading files in directory ${dirPath}: ${error}`
+            `Error while reading files in directory ${dirPath}: ${error}`,
         );
     }
 }
@@ -34,14 +34,14 @@ interface NamedFunction {
 }
 
 async function extractNamedFunctionsFromSource(
-    sourceCode: string
+    sourceCode: string,
 ): Promise<Set<NamedFunction>> {
     try {
         const namedFunctions = new Set<NamedFunction>();
         const sourceFile = ts.createSourceFile(
             "temp.ts",
             sourceCode,
-            ts.ScriptTarget.Latest
+            ts.ScriptTarget.Latest,
         );
 
         function visit(node: ts.Node) {
@@ -73,12 +73,12 @@ async function extractNamedFunctionsFromSource(
                 if (functionName) {
                     const leadingComments = ts.getLeadingCommentRanges(
                         sourceFile.getFullText(),
-                        node.getFullStart()
+                        node.getFullStart(),
                     );
                     if (leadingComments) {
                         testFileAssociation = extractTestFileFromComments(
                             leadingComments,
-                            sourceFile.getFullText()
+                            sourceFile.getFullText(),
                         );
                     }
                     namedFunctions.add({
@@ -89,6 +89,43 @@ async function extractNamedFunctionsFromSource(
                     });
                 }
 
+                // Inserting new logic for broader AST parsing
+                // New logic for handling method calls within the visit function
+                if (
+                    ts.isCallExpression(node) &&
+                    ts.isPropertyAccessExpression(node.expression)
+                ) {
+                    const expression = node.expression;
+                    const methodName = expression.name.getText(sourceFile);
+                    const targetObject = expression.expression.getText(sourceFile);
+
+                    // Example: Identifying Express route handlers (app.get, app.post, etc.)
+                    if (
+                        targetObject === "app" &&
+                        ["get", "post", "put", "delete", "patch"].includes(
+                            methodName,
+                        )
+                    ) {
+                        let routePath = "";
+                        if (
+                            node.arguments.length > 0 &&
+                            ts.isStringLiteral(node.arguments[0])
+                        ) {
+                            routePath = node.arguments[0].getText(sourceFile);
+                        }
+                        const handlerName = `${methodName.toUpperCase()}_handler_${routePath.replace(/\//g, "_")}`;
+
+                        // Check for direct function (named or anonymous) as a handler
+                        if (
+                            node.arguments.length > 1 &&
+                            (ts.isFunctionExpression(node.arguments[1]) ||
+                                ts.isArrowFunction(node.arguments[1]))
+                        ) {
+                            namedFunctions.add({ name: handlerName }); // Or generate a unique name based on context
+                        }
+                    }
+                }
+                // End of new logic insertion
                 ts.forEachChild(node, visit);
             } catch (error) {
                 console.error("Error while visiting node:", error);
@@ -104,7 +141,7 @@ async function extractNamedFunctionsFromSource(
 
 function extractTestFileFromComments(
     commentRanges: ts.CommentRange[],
-    text: string
+    text: string,
 ): string | null {
     for (const range of commentRanges) {
         const commentText = text.substring(range.pos, range.end);
@@ -116,12 +153,8 @@ function extractTestFileFromComments(
     return null;
 }
 
-
-
-
-
 async function generateFunctionListForCodebase(
-    directoryPath: string
+    directoryPath: string,
 ): Promise<Set<NamedFunction>> {
     try {
         let allNamedFunctions = new Set<NamedFunction>();
@@ -130,11 +163,10 @@ async function generateFunctionListForCodebase(
         for (const file of allFiles) {
             if (file.endsWith(".ts")) {
                 const content = await fs.readFile(file, "utf8");
-                const fileFunctions = await extractNamedFunctionsFromSource(
-                    content
-                );
+                const fileFunctions =
+                    await extractNamedFunctionsFromSource(content);
                 fileFunctions.forEach((fnName) =>
-                    allNamedFunctions.add(fnName)
+                    allNamedFunctions.add(fnName),
                 );
             }
         }
@@ -142,7 +174,7 @@ async function generateFunctionListForCodebase(
         return allNamedFunctions;
     } catch (error) {
         throw new Error(
-            `Error while generating function list for codebase: ${error}`
+            `Error while generating function list for codebase: ${error}`,
         );
     }
 }
@@ -150,7 +182,7 @@ async function generateFunctionListForCodebase(
 async function updateFunctionsListHistory(
     newFunctionsList: Set<NamedFunction>,
     currentPath: string,
-    historyPath: string
+    historyPath: string,
 ): Promise<void> {
     try {
         let previousList: NamedFunction[] = [];
@@ -159,12 +191,12 @@ async function updateFunctionsListHistory(
             previousList = JSON.parse(currentContent);
         } catch (error) {
             console.log(
-                "No previous functions list found. Assuming this is the first run."
+                "No previous functions list found. Assuming this is the first run.",
             );
         }
 
         const added = Array.from(newFunctionsList).filter(
-            (fn) => !previousList.includes(fn)
+            (fn) => !previousList.includes(fn),
         );
         const removed = previousList.filter((fn) => !newFunctionsList.has(fn));
 
@@ -190,18 +222,18 @@ async function updateFunctionsListHistory(
         await fs.writeFile(
             historyPath,
             JSON.stringify(history, null, 2),
-            "utf8"
+            "utf8",
         );
     } catch (error) {
         throw new Error(
-            `Error while updating functions list history: ${error}`
+            `Error while updating functions list history: ${error}`,
         );
     }
 }
 
 async function writeFunctionsListToFile(
     functionsList: Set<NamedFunction>,
-    filePath: string
+    filePath: string,
 ): Promise<void> {
     try {
         // Convert the set to an array and sort it alphabetically
@@ -211,7 +243,7 @@ async function writeFunctionsListToFile(
         await fs.writeFile(
             filePath,
             JSON.stringify(sortedFunctions, null, 2),
-            "utf8"
+            "utf8",
         );
     } catch (error) {
         throw new Error(`Error while writing functions list to file: ${error}`);
@@ -224,25 +256,24 @@ async function generateAndTrackFunctionList(codebasePath: string) {
         const currentFunctionsListPath = path.join(
             codebasePath,
             // "src/",
-            "currentFunctionsList.json"
+            "currentFunctionsList.json",
         );
         const functionsListHistoryPath = path.join(
             codebasePath,
             // "src/",
-            "functionsListHistory.json"
+            "functionsListHistory.json",
         );
 
-        const allNamedFunctions = await generateFunctionListForCodebase(
-            codebasePath
-        );
+        const allNamedFunctions =
+            await generateFunctionListForCodebase(codebasePath);
         await updateFunctionsListHistory(
             allNamedFunctions,
             currentFunctionsListPath,
-            functionsListHistoryPath
+            functionsListHistoryPath,
         );
         await writeFunctionsListToFile(
             allNamedFunctions,
-            currentFunctionsListPath
+            currentFunctionsListPath,
         );
         console.log("Named functions list and history updated.");
     } catch (error) {
@@ -252,7 +283,8 @@ async function generateAndTrackFunctionList(codebasePath: string) {
 
 // Example usage
 // Make sure the path used here correctly targets the src/ directory
-const codebasePath = "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test/src"; // Real path to your codebase
+const codebasePath =
+    "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test/src"; // Real path to your codebase
 generateAndTrackFunctionList(codebasePath)
     .then(() => console.log("Function list generation and tracking completed."))
     .catch((error) => console.error("Error:", error));
