@@ -11,6 +11,10 @@ async function getAllFiles(
         for (const file of files) {
             const fullPath = path.join(dirPath, file);
             if ((await fs.stat(fullPath)).isDirectory()) {
+                // Skip node_modules directory
+                if (file === "node_modules") {
+                    continue;
+                }
                 arrayOfFiles = await getAllFiles(fullPath, arrayOfFiles);
             } else {
                 arrayOfFiles.push(fullPath);
@@ -24,11 +28,16 @@ async function getAllFiles(
     }
 }
 
+interface NamedFunction {
+    name: string;
+    testFile?: string; // Optional property to store associated test file path
+}
+
 async function extractNamedFunctionsFromSource(
     sourceCode: string
-): Promise<Set<string>> {
+): Promise<Set<NamedFunction>> {
     try {
-        const namedFunctions = new Set<string>();
+        const namedFunctions = new Set<NamedFunction>();
         const sourceFile = ts.createSourceFile(
             "temp.ts",
             sourceCode,
@@ -42,26 +51,44 @@ async function extractNamedFunctionsFromSource(
                     return;
                 }
 
-                // console.log("Visiting node of type:", ts.SyntaxKind[node.kind]);
+                let functionName: string | null = null;
+                let testFileAssociation: string | null = null;
 
                 if (
                     ts.isFunctionDeclaration(node) &&
                     node.name &&
                     ts.isIdentifier(node.name)
                 ) {
-                    namedFunctions.add(node.name.getText(sourceFile));
+                    functionName = node.name.getText(sourceFile);
                 } else if (
                     ts.isVariableDeclaration(node) &&
+                    node.initializer &&
+                    ts.isArrowFunction(node.initializer) &&
                     node.name &&
                     ts.isIdentifier(node.name)
                 ) {
-                    if (
-                        node.initializer &&
-                        ts.isArrowFunction(node.initializer)
-                    ) {
-                        namedFunctions.add(node.name.getText(sourceFile));
-                    }
+                    functionName = node.name.getText(sourceFile);
                 }
+
+                if (functionName) {
+                    const leadingComments = ts.getLeadingCommentRanges(
+                        sourceFile.getFullText(),
+                        node.getFullStart()
+                    );
+                    if (leadingComments) {
+                        testFileAssociation = extractTestFileFromComments(
+                            leadingComments,
+                            sourceFile.getFullText()
+                        );
+                    }
+                    namedFunctions.add({
+                        name: functionName,
+                        ...(testFileAssociation && {
+                            testFile: testFileAssociation,
+                        }),
+                    });
+                }
+
                 ts.forEachChild(node, visit);
             } catch (error) {
                 console.error("Error while visiting node:", error);
@@ -75,15 +102,29 @@ async function extractNamedFunctionsFromSource(
     }
 }
 
+function extractTestFileFromComments(
+    commentRanges: ts.CommentRange[],
+    text: string
+): string | null {
+    for (const range of commentRanges) {
+        const commentText = text.substring(range.pos, range.end);
+        const testFileMatch = commentText.match(/@tests: ([\S]+)/);
+        if (testFileMatch) {
+            return testFileMatch[1];
+        }
+    }
+    return null;
+}
+
 
 
 
 
 async function generateFunctionListForCodebase(
     directoryPath: string
-): Promise<Set<string>> {
+): Promise<Set<NamedFunction>> {
     try {
-        let allNamedFunctions = new Set<string>();
+        let allNamedFunctions = new Set<NamedFunction>();
         const allFiles = await getAllFiles(directoryPath);
 
         for (const file of allFiles) {
@@ -107,12 +148,12 @@ async function generateFunctionListForCodebase(
 }
 
 async function updateFunctionsListHistory(
-    newFunctionsList: Set<string>,
+    newFunctionsList: Set<NamedFunction>,
     currentPath: string,
     historyPath: string
 ): Promise<void> {
     try {
-        let previousList: string[] = [];
+        let previousList: NamedFunction[] = [];
         try {
             const currentContent = await fs.readFile(currentPath, "utf8");
             previousList = JSON.parse(currentContent);
@@ -159,7 +200,7 @@ async function updateFunctionsListHistory(
 }
 
 async function writeFunctionsListToFile(
-    functionsList: Set<string>,
+    functionsList: Set<NamedFunction>,
     filePath: string
 ): Promise<void> {
     try {
@@ -182,12 +223,12 @@ async function generateAndTrackFunctionList(codebasePath: string) {
     try {
         const currentFunctionsListPath = path.join(
             codebasePath,
-            "src/",
+            // "src/",
             "currentFunctionsList.json"
         );
         const functionsListHistoryPath = path.join(
             codebasePath,
-            "src/",
+            // "src/",
             "functionsListHistory.json"
         );
 
@@ -210,8 +251,8 @@ async function generateAndTrackFunctionList(codebasePath: string) {
 }
 
 // Example usage
-const codebasePath =
-    "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test"; // Real path to your codebase
+// Make sure the path used here correctly targets the src/ directory
+const codebasePath = "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test/src"; // Real path to your codebase
 generateAndTrackFunctionList(codebasePath)
     .then(() => console.log("Function list generation and tracking completed."))
     .catch((error) => console.error("Error:", error));
