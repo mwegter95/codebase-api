@@ -26,6 +26,9 @@
     "LastTestTime": "2024-02-24T00:34:47.095Z",
     "LastTestOutput": "2-HEALTHCHECK-URL Health check endpoint returns 200 OK",
     "LastOutputMatchesExpected": "Yes",
-    "LastUpdated": "2024-02-24T00:34:47.095Z"
+    "LastUpdated": "2024-02-24T00:34:47.095Z",
+    "affectedNamedFunctions": [
+      "GET_handler_\"_health\""
+    ]
   }
 }

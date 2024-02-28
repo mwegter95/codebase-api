@@ -4,7 +4,7 @@ import * as ts from "typescript";
 
 async function getAllFiles(
     dirPath: string,
-    arrayOfFiles: string[] = [],
+    arrayOfFiles: string[] = []
 ): Promise<string[]> {
     try {
         const files = await fs.readdir(dirPath);
@@ -23,7 +23,7 @@ async function getAllFiles(
         return arrayOfFiles;
     } catch (error) {
         throw new Error(
-            `Error while reading files in directory ${dirPath}: ${error}`,
+            `Error while reading files in directory ${dirPath}: ${error}`
         );
     }
 }
@@ -35,121 +35,99 @@ interface NamedFunction {
 }
 
 async function extractNamedFunctionsFromSource(
-    sourceCode: string,
+    sourceCode: string
 ): Promise<Set<NamedFunction>> {
     try {
         const namedFunctions = new Set<NamedFunction>();
         const sourceFile = ts.createSourceFile(
             "temp.ts",
             sourceCode,
-            ts.ScriptTarget.Latest,
+            ts.ScriptTarget.Latest
         );
 
         function visit(node: ts.Node) {
-            try {
-                if (!node) {
-                    console.log("Encountered undefined node");
-                    return;
+            let functionName: string | null = null;
+            let testFileAssociation: string | null = null;
+            let functionalityID: string | null = null;
+
+            // Extract functionalityID and testFileAssociation from comments
+            const leadingComments = ts.getLeadingCommentRanges(
+                sourceFile.getFullText(),
+                node.getFullStart()
+            );
+
+            if (leadingComments) {
+                const commentText = leadingComments
+                    .map((range) =>
+                        sourceFile.text.substring(range.pos, range.end)
+                    )
+                    .join("\n"); // Combine all leading comments into a single string
+
+                const functionalityIDMatch = commentText.match(
+                    /@functionalityID: (\S+)/
+                );
+                if (functionalityIDMatch) {
+                    functionalityID = functionalityIDMatch[1];
                 }
 
-                let functionName: string | null = null;
-                let testFileAssociation: string | null = null;
-
-                if (
-                    ts.isFunctionDeclaration(node) &&
-                    node.name &&
-                    ts.isIdentifier(node.name)
-                ) {
-                    functionName = node.name.getText(sourceFile);
-                } else if (
-                    ts.isVariableDeclaration(node) &&
-                    node.initializer &&
-                    ts.isArrowFunction(node.initializer) &&
-                    node.name &&
-                    ts.isIdentifier(node.name)
-                ) {
-                    functionName = node.name.getText(sourceFile);
+                const testFileMatch = commentText.match(/@tests: ([\S]+)/);
+                if (testFileMatch) {
+                    testFileAssociation = testFileMatch[1];
                 }
-
-                if (functionName) {
-                    const leadingComments = ts.getLeadingCommentRanges(
-                        sourceFile.getFullText(),
-                        node.getFullStart()
-                    );
-                    if (leadingComments) {
-                        testFileAssociation = extractTestFileFromComments(
-                            leadingComments,
-                            sourceFile.getFullText()
-                        );
-                    }
-                    // New functionalityID extraction logic
-                    const functionalityIDMatch =
-                        leadingComments &&
-                        leadingComments
-                            .map((commentRange) =>
-                                sourceFile.text.substring(
-                                    commentRange.pos,
-                                    commentRange.end
-                                )
-                            )
-                            .join("\n")
-                            .match(/@functionalityID: (\S+)/);
-
-                    let functionalityID = null;
-                    if (functionalityIDMatch) {
-                        functionalityID = functionalityIDMatch[1];
-                    }
-
-                    namedFunctions.add({
-                        name: functionName,
-                        ...(testFileAssociation && {
-                            testFile: testFileAssociation,
-                        }),
-                        ...(functionalityID && { functionalityID }), // Add this line to include functionalityID in the NamedFunction object
-                    });
-                }
-
-                // Inserting new logic for broader AST parsing
-                // New logic for handling method calls within the visit function
-                if (
-                    ts.isCallExpression(node) &&
-                    ts.isPropertyAccessExpression(node.expression)
-                ) {
-                    const expression = node.expression;
-                    const methodName = expression.name.getText(sourceFile);
-                    const targetObject = expression.expression.getText(sourceFile);
-
-                    // Example: Identifying Express route handlers (app.get, app.post, etc.)
-                    if (
-                        targetObject === "app" &&
-                        ["get", "post", "put", "delete", "patch"].includes(
-                            methodName,
-                        )
-                    ) {
-                        let routePath = "";
-                        if (
-                            node.arguments.length > 0 &&
-                            ts.isStringLiteral(node.arguments[0])
-                        ) {
-                            routePath = node.arguments[0].getText(sourceFile);
-                        }
-                        const handlerName = `${methodName.toUpperCase()}_handler_${routePath.replace(/\//g, "_")}`;
-
-                        // Check for direct function (named or anonymous) as a handler
-                        if (
-                            node.arguments.length > 1 &&
-                            (ts.isFunctionExpression(node.arguments[1]) ||
-                                ts.isArrowFunction(node.arguments[1]))
-                        ) {
-                            namedFunctions.add({ name: handlerName }); // Or generate a unique name based on context
-                        }
-                    }
-                }
-                // End of new logic insertion
-                ts.forEachChild(node, visit);
-            } catch (error) {
-                console.error("Error while visiting node:", error);
             }
+
+            // Process function declarations and variable declarations (for arrow functions)
+            if (
+                (ts.isFunctionDeclaration(node) && node.name) ||
+                (ts.isVariableDeclaration(node) &&
+                    node.initializer &&
+                    ts.isArrowFunction(node.initializer))
+            ) {
+                functionName = node.name!.getText(sourceFile);
+            }
+
+            // Additional logic for handling method calls (e.g., route handlers)
+            if (
+                ts.isCallExpression(node) &&
+                ts.isPropertyAccessExpression(node.expression)
+            ) {
+                const expression = node.expression;
+                const methodName = expression.name.getText(sourceFile);
+                const targetObject = expression.expression.getText(sourceFile);
+
+                // Example: Identifying Express route handlers (app.get, app.post, etc.)
+                if (
+                    targetObject === "app" &&
+                    ["get", "post", "put", "delete", "patch"].includes(
+                        methodName
+                    )
+                ) {
+                    let routePath = "";
+                    if (
+                        node.arguments.length > 0 &&
+                        ts.isStringLiteral(node.arguments[0])
+                    ) {
+                        routePath = node.arguments[0].getText(sourceFile);
+                    }
+                    functionName = `${methodName.toUpperCase()}_handler_${routePath.replace(
+                        /\//g,
+                        "_"
+                    )}`;
+                }
+            }
+
+            // Add the function to the namedFunctions set if a name was identified
+            if (functionName) {
+                namedFunctions.add({
+                    name: functionName,
+                    ...(testFileAssociation && {
+                        testFile: testFileAssociation,
+                    }),
+                    ...(functionalityID && { functionalityID }),
+                });
+            }
+
+            ts.forEachChild(node, visit);
         }
 
         ts.forEachChild(sourceFile, visit);
@@ -161,13 +139,13 @@ async function extractNamedFunctionsFromSource(
 
 function extractTestFileFromComments(
     commentRanges: ts.CommentRange[],
-    text: string,
+    text: string
 ): string | null {
     for (const range of commentRanges) {
         const commentText = text.substring(range.pos, range.end);
-        console.log(commentText); // To see the actual content of each comment
+        // console.log(commentText); // To see the actual content of each comment
         const testFileMatch = commentText.match(/@tests: ([\S]+)/);
-        console.log(testFileMatch);
+        // console.log(testFileMatch);
         if (testFileMatch) {
             return testFileMatch[1];
         }
@@ -176,7 +154,7 @@ function extractTestFileFromComments(
 }
 
 async function generateFunctionListForCodebase(
-    directoryPath: string,
+    directoryPath: string
 ): Promise<Set<NamedFunction>> {
     try {
         let allNamedFunctions = new Set<NamedFunction>();
@@ -185,10 +163,11 @@ async function generateFunctionListForCodebase(
         for (const file of allFiles) {
             if (file.endsWith(".ts")) {
                 const content = await fs.readFile(file, "utf8");
-                const fileFunctions =
-                    await extractNamedFunctionsFromSource(content);
+                const fileFunctions = await extractNamedFunctionsFromSource(
+                    content
+                );
                 fileFunctions.forEach((fnName) =>
-                    allNamedFunctions.add(fnName),
+                    allNamedFunctions.add(fnName)
                 );
             }
         }
@@ -196,7 +175,7 @@ async function generateFunctionListForCodebase(
         return allNamedFunctions;
     } catch (error) {
         throw new Error(
-            `Error while generating function list for codebase: ${error}`,
+            `Error while generating function list for codebase: ${error}`
         );
     }
 }
@@ -259,10 +238,9 @@ async function updateFunctionsListHistory(
     }
 }
 
-
 async function writeFunctionsListToFile(
     functionsList: Set<NamedFunction>,
-    filePath: string,
+    filePath: string
 ): Promise<void> {
     try {
         // Convert the set to an array and sort it alphabetically
@@ -272,7 +250,7 @@ async function writeFunctionsListToFile(
         await fs.writeFile(
             filePath,
             JSON.stringify(sortedFunctions, null, 2),
-            "utf8",
+            "utf8"
         );
     } catch (error) {
         throw new Error(`Error while writing functions list to file: ${error}`);
@@ -285,26 +263,76 @@ async function generateAndTrackFunctionList(codebasePath: string) {
         const currentFunctionsListPath = path.join(
             codebasePath,
             // "src/",
-            "currentFunctionsList.json",
+            "currentFunctionsList.json"
         );
         const functionsListHistoryPath = path.join(
             codebasePath,
             // "src/",
-            "functionsListHistory.json",
+            "functionsListHistory.json"
         );
 
-        const allNamedFunctions =
-            await generateFunctionListForCodebase(codebasePath);
+        const allNamedFunctions = await generateFunctionListForCodebase(
+            codebasePath
+        );
         await updateFunctionsListHistory(
             allNamedFunctions,
             currentFunctionsListPath,
-            functionsListHistoryPath,
+            functionsListHistoryPath
         );
         await writeFunctionsListToFile(
             allNamedFunctions,
-            currentFunctionsListPath,
+            currentFunctionsListPath
         );
         console.log("Named functions list and history updated.");
+        // After generating allNamedFunctions...
+
+        // Automating functionalityTracker.json affectedNamedFunctions Filling
+        const functionalityTrackerPath = path.join(
+            codebasePath,
+            "functionalityTracker.json"
+        );
+        let functionalityTracker = JSON.parse(
+            await fs.readFile(functionalityTrackerPath, "utf8")
+        );
+
+        allNamedFunctions.forEach((func) => {
+            if (
+                func.functionalityID &&
+                functionalityTracker[func.functionalityID]
+            ) {
+                let entry = functionalityTracker[func.functionalityID];
+                entry.affectedNamedFunctions =
+                    entry.affectedNamedFunctions || [];
+                if (!entry.affectedNamedFunctions.includes(func.name)) {
+                    entry.affectedNamedFunctions.push(func.name);
+                }
+            }
+        });
+
+        await fs.writeFile(
+            functionalityTrackerPath,
+            JSON.stringify(functionalityTracker, null, 2),
+            "utf8"
+        );
+
+        // Step 4: Implementing Test Coverage Check
+        let allFunctionNames = new Set(
+            Array.from(allNamedFunctions).map((func) => func.name)
+        );
+        Object.values(functionalityTracker as Record<string, any>).forEach(
+            (entry: Record<string, any>) => {
+                (entry.affectedNamedFunctions || []).forEach(
+                    (funcName: string) => allFunctionNames.delete(funcName)
+                );
+            }
+        );
+
+        if (allFunctionNames.size > 0) {
+            console.warn(
+                "The following functions are not covered by functionalityTracker: ",
+                Array.from(allFunctionNames).join(", ")
+            );
+        }
     } catch (error) {
         console.error("Error:", error);
     }

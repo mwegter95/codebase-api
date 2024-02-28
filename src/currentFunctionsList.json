@@ -75,7 +75,9 @@
     "name": "GET_handler_\"_api_dev-repo_health\""
   },
   {
-    "name": "GET_handler_\"_health\""
+    "name": "GET_handler_\"_health\"",
+    "testFile": "src/tests/healthCheck.test.ts",
+    "functionalityID": "2-HEALTHCHECK-URL"
   },
   {
     "name": "startTestServer"
