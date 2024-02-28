@@ -229,6 +229,8 @@ app.get("/api/dev-repo/health", async (req: Request, res: Response) => {
 });
 
 // Healthcheck endpoint
+// @functionalityID: 2-HEALTHCHECK-URL
+// @tests: src/tests/healthCheck.test.ts
 app.get("/health", (req: Request, res: Response) => {
     res.status(200).send({ status: "ok" });
 });

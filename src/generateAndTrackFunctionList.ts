@@ -30,6 +30,7 @@ async function getAllFiles(
 
 interface NamedFunction {
     name: string;
+    functionalityID?: string; // Optional property to store functionality ID
     testFile?: string; // Optional property to store associated test file path
 }
 
@@ -73,19 +74,38 @@ async function extractNamedFunctionsFromSource(
                 if (functionName) {
                     const leadingComments = ts.getLeadingCommentRanges(
                         sourceFile.getFullText(),
-                        node.getFullStart(),
+                        node.getFullStart()
                     );
                     if (leadingComments) {
                         testFileAssociation = extractTestFileFromComments(
                             leadingComments,
-                            sourceFile.getFullText(),
+                            sourceFile.getFullText()
                         );
                     }
+                    // New functionalityID extraction logic
+                    const functionalityIDMatch =
+                        leadingComments &&
+                        leadingComments
+                            .map((commentRange) =>
+                                sourceFile.text.substring(
+                                    commentRange.pos,
+                                    commentRange.end
+                                )
+                            )
+                            .join("\n")
+                            .match(/@functionalityID: (\S+)/);
+
+                    let functionalityID = null;
+                    if (functionalityIDMatch) {
+                        functionalityID = functionalityIDMatch[1];
+                    }
+
                     namedFunctions.add({
                         name: functionName,
                         ...(testFileAssociation && {
                             testFile: testFileAssociation,
                         }),
+                        ...(functionalityID && { functionalityID }), // Add this line to include functionalityID in the NamedFunction object
                     });
                 }
 
@@ -145,7 +165,9 @@ function extractTestFileFromComments(
 ): string | null {
     for (const range of commentRanges) {
         const commentText = text.substring(range.pos, range.end);
+        console.log(commentText); // To see the actual content of each comment
         const testFileMatch = commentText.match(/@tests: ([\S]+)/);
+        console.log(testFileMatch);
         if (testFileMatch) {
             return testFileMatch[1];
         }
