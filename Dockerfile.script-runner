@@ -1,9 +1,9 @@
 # Use the script-runner image as base
 FROM script-runner:latest
 
-# Install Git and Node.js
+# Install Git, tree, Node.js, npm, and bash
 RUN apk update && \
-    apk add --no-cache git tree nodejs npm
+    apk add --no-cache git tree nodejs npm bash
 
 # Install Prettier globally using npm
 RUN npm install -g prettier
@@ -19,6 +19,7 @@ RUN printf "[includeIf \"gitdir:personal/\"]\n\tpath = .gitconfig-personal\n\n\
     [diff]\n\tsubmodule = log\n\
     [init]\n\tdefaultBranch = main\n\
     [pull]\n\trebase = false\n" > /root/.gitconfig
+
 
 
 

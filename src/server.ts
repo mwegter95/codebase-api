@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
-// import { exec, spawn } from 'child_process';
-import { exec as execCallback } from "child_process";
+// import { spawn } from 'child_process';
+import { exec as execCallback, spawn } from "child_process";
 import { promisify } from "util";
 import { promises as fs } from "fs";
 import path from "path";
@@ -92,57 +92,96 @@ io.on("connection", (socket) => {
     });
 });
 
+async function isScriptContentValid(scriptContent: string): Promise<boolean> {
+    // Check for extra backslashes
+    if (
+        scriptContent.includes("\\n") ||
+        scriptContent.includes("\\r")
+    ) {
+        console.error(
+            "Script file contains extra backslashes or invalid characters."
+        );
+        return false;
+    }
+
+    // Add more checks if needed
+
+    return true;
+}
+
+/**
+ * Executes a given script within a Docker container.
+ * @param scriptContent - The content of the script to be executed.
+ * @param basePath - The base path where the script file will be created.
+ * @param res - The Express response object.
+ * @param isDev - Indicates if the execution is for the development environment.
+ */
 async function executeScript(
     scriptContent: string,
     basePath: string,
-    res: Response
-) {
+    res: Response,
+    isDev: boolean = false
+): Promise<void> {
     const scriptFileName = `script-${Date.now()}.sh`;
-    // const scriptPath = path.join(basePath, scriptFileName);
-    const scriptPath = path.join(basePath, scriptFileName);
+    const scriptCreationPath = isDev ? devTestPath : basePath; // Adjust based on context
+    const scriptPath = path.join(scriptCreationPath, scriptFileName);
 
     try {
-        // Write the script file
+        console.log("Writing script file at:", scriptPath);
         await fs.writeFile(scriptPath, scriptContent, "utf8");
+        console.log("Script file created successfully.");
 
-        // Construct and execute the Docker command
-        const dockerCommand = `docker run --rm -v "${basePath}:/app" script-runner:latest /app/${scriptFileName}`;
-        execCallback(dockerCommand, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`exec error: ${error}`);
-                return res.status(500).send({ error: stderr });
+        // Adding read back for debugging
+        const readBackContent = await fs.readFile(scriptPath, "utf8");
+        console.log("Read back content:", readBackContent);
+
+        // Validate script content
+        if (await isScriptContentValid(readBackContent)) {
+            console.log("Script content is valid. Proceeding...");
+            // Proceed with executing the script
+        } else {
+            console.error("Script content is not valid. Aborting...");
+            // Handle the error or exit the process
+        }
+
+        const dockerCommand = `docker run --rm -v "${scriptCreationPath}:/app" script-runner:latest /app/${path.basename(
+            scriptPath
+        )}`;
+        console.log("Executing Docker command:", dockerCommand);
+
+        const childProcess = spawn(dockerCommand, { shell: true });
+
+        // Stream stdout to the response
+        childProcess.stdout.on("data", (data) => {
+            console.log("Docker stdout:", data.toString());
+            res.write(data);
+        });
+
+        // Stream stderr to the response
+        childProcess.stderr.on("data", (data) => {
+            console.error("Docker stderr:", data.toString());
+            res.write(data);
+        });
+
+        // Handle process exit
+        childProcess.on("close", (code) => {
+            console.log("Docker process exited with code", code);
+            if (code === 0) {
+                res.end();
+            } else {
+                res.status(500).end();
             }
-
-            if (stderr) {
-                console.error("Docker exec stderr:", stderr);
-                // Adjust based on whether you consider stderr output as a critical error
-                return res.status(200).send({
-                    message: "Script executed with warnings.",
-                    output: stdout,
-                    error: stderr,
-                });
-            }
-
-            res.send({
-                message: "Script executed successfully.",
-                output: stdout,
-            });
         });
     } catch (error) {
-        // Handle file system errors
-        console.error((error as Error).message);
+        console.error(`Error: ${(error as Error).message}`);
         res.status(500).send({ error: (error as Error).message });
-    } finally {
-        // Attempt to clean up the script file
-        try {
-            await fs.unlink(scriptPath);
-        } catch (cleanupError) {
-            console.error(
-                `Error deleting script file: ${(cleanupError as Error).message}`
-            );
-        }
     }
+    // finally {
+    //     // Ensure deletion happens after Docker command completes
+    //     console.log("Ensuring script file deletion after Docker execution.");
+    // }
 }
+
 
 // Original script execution endpoint
 app.post("/api/execute/script", async (req: Request, res: Response) => {
@@ -160,7 +199,7 @@ async function fetchCodebaseTree(basePath: string, res: Response) {
     res.setHeader("Cache-Control", "no-store"); // Disable caching
 
     try {
-        const { stdout } = await exec(`tree ${basePath} -I 'node_modules'`, {
+        const { stdout } = await exec(`tree ${basePath} -I 'node_modules' --gitignore`, {
             shell: "/bin/bash",
         });
         res.status(200).send(`<pre>${stdout}</pre>`);
@@ -324,3 +363,8 @@ app.get("/health", (req: Request, res: Response) => {
 httpServer.listen(port, () => {
     console.log(`Server with Websockets running at http://localhost:${port}`);
 });
+
+// For localtunnel communication with GPT actions
+/*
+lt --subdomain 'codebaseapiv2' --port 3000
+*/
