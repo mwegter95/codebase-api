@@ -111,7 +111,7 @@ async function appendTestHistory(
 }
 
 
-async function runJestTests() {
+export async function runJestTests() {
     try {
         // Await the server to start
         const server = await startTestServer(TEST_PORT);

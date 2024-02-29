@@ -258,7 +258,7 @@ async function writeFunctionsListToFile(
 }
 
 // The main function that orchestrates generating the functions list and updating history
-async function generateAndTrackFunctionList(codebasePath: string) {
+export async function generateAndTrackFunctionList(codebasePath: string) {
     try {
         const currentFunctionsListPath = path.join(
             codebasePath,

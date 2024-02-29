@@ -9,12 +9,13 @@ import axios from "axios";
 import morgan from "morgan";
 import { Server, createServer } from "http";
 import { Server as SocketIOServer } from "socket.io";
+import { performPostScriptChecks } from "./postScriptChecks";
 
 dotenv.config();
 
 const app = express();
-const appTest = express()
-appTest.use(app) // make appTest use all the same middleware and endpoints as the app
+const appTest = express();
+appTest.use(app); // make appTest use all the same middleware and endpoints as the app
 const port = 3003;
 console.log(process.env.CODEBASE_PATH);
 const codebasePath =
@@ -43,7 +44,7 @@ const exec = promisify(execCallback);
 async function executeScript(
     scriptContent: string,
     basePath: string,
-    res: Response
+    res: Response,
 ) {
     const scriptFileName = `script-${Date.now()}.sh`;
     const scriptPath = path.join(basePath, scriptFileName);
@@ -54,23 +55,30 @@ async function executeScript(
 
         // Construct and execute the Docker command
         const dockerCommand = `docker run --rm -v "${basePath}:/app" script-runner:latest /app/${scriptFileName}`;
-        const output = await exec(dockerCommand);
-
-        // Send success response
-        res.send({ message: "Script executed successfully.", output: output });
+        const dockerOutput = await exec(dockerCommand);
+        const postScriptCheckResults = await performPostScriptChecks(basePath);
+        const combinedOutput = {
+            scriptOutput: dockerOutput,
+            postScriptChecksOutput: postScriptCheckResults,
+        };
+        res.send({
+            message:
+                "Script executed and performed post-script checks. Check output.",
+            output: combinedOutput,
+        });
     } catch (error) {
         // Handle errors from both fs and execPromise
         console.error((error as Error).message);
         res.status(500).send({ error: (error as Error).message });
-    } finally {
+        // } finally {
         // Clean up by deleting the script file, ignoring errors in cleanup
-        try {
-            await fs.unlink(scriptPath);
-        } catch (error) {
-            console.error(
-                `Error deleting script file: ${(error as Error).message}`
-            );
-        }
+        // try {
+        //     await fs.unlink(scriptPath);
+        // } catch (error) {
+        //     console.error(
+        //         `Error deleting script file: ${(error as Error).message}`
+        //     );
+        // }
     }
 }
 
@@ -98,7 +106,7 @@ app.get("/api/codebase/tree", async (req, res) => {
                 return res.status(500).send({ error: stderr });
             }
             res.send(`<pre>${stdout}</pre>`);
-        }
+        },
     );
 });
 
@@ -159,18 +167,16 @@ app.get("/api/dev-repo/start", async (req: Request, res: Response) => {
                         });
                     }
                 }
-                return res
-                    .status(500)
-                    .send({
-                        error: `Failed to start dev-test repo: ${stderr}`,
-                    });
+                return res.status(500).send({
+                    error: `Failed to start dev-test repo: ${stderr}`,
+                });
             }
 
             // After starting, poll for health check
             const success = await pollHealthCheck(
                 devTestHealthCheckURL,
                 5,
-                2000
+                2000,
             ); // Retry 5 times, 2000ms apart
             if (success) {
                 res.send({ message: "Dev-test repo started and is healthy." });
@@ -179,7 +185,7 @@ app.get("/api/dev-repo/start", async (req: Request, res: Response) => {
                     error: "Dev-test repo started but failed health check.",
                 });
             }
-        }
+        },
     );
 });
 
@@ -187,7 +193,7 @@ app.get("/api/dev-repo/start", async (req: Request, res: Response) => {
 async function pollHealthCheck(
     url: string,
     retries: number,
-    interval: number | undefined
+    interval: number | undefined,
 ) {
     for (let i = 0; i < retries; i++) {
         try {
