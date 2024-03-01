@@ -7,19 +7,22 @@ import path from "path";
 import dotenv from "dotenv";
 import axios from "axios";
 import morgan from "morgan";
-import { createServer } from "http";
+import { createServer, Server } from "http";
 import { Server as SocketIOServer } from "socket.io";
 import { ParsedQs } from "qs";
 
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3003;
+const appTest = express();
+appTest.use(app); // make appTest use all the same middleware and endpoints as the app
+const port = 3003;
 console.log(process.env.CODEBASE_PATH);
 const codebasePath =
     process.env.CODEBASE_PATH ||
-    "/Users/michaelwegter/Desktop/Projects/codebase-api";
+    "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test";
 const httpServer = createServer(app);
+const httpTestServer = createServer(appTest);
 const devTestPath =
     "/Users/michaelwegter/Desktop/Projects/codebase-api-dev-test"; // Adjust as necessary
 
@@ -38,60 +41,6 @@ app.use(express.static("public"));
 app.use(morgan("tiny"));
 
 const exec = promisify(execCallback);
-io.on("connection", (socket) => {
-    console.log("A client connected");
-
-    socket.on("start-comparison", async () => {
-        try {
-            const { stdout } = await exec(
-                `git diff --name-only ${codebasePath} ${devTestPath}`
-            );
-            const filteredOutput = stdout
-                .split("\n")
-                .filter(
-                    (line) =>
-                        !line.includes(".git") &&
-                        !line.includes("node_modules") &&
-                        !line.includes("/dev/null")
-                )
-                .filter(Boolean); // Remove empty lines
-            const diffs = filteredOutput.map((file) => {
-                return { id: file, content: file }; // Adjust based on how you want to represent this
-            });
-            socket.emit("diff-result", diffs);
-        } catch (error) {
-            console.error("Error generating diffs:", error);
-            socket.emit("error", "Failed to generate diffs");
-        }
-    });
-
-    socket.on("apply-selections", async (selectedDiffs) => {
-        console.log("Applying selected diffs:", selectedDiffs);
-        try {
-            for (const file of selectedDiffs) {
-                const patchPath = `${codebasePath}/temp.patch`;
-                const { stdout: patchContent } = await exec(
-                    `git diff ${codebasePath}/${file} ${devTestPath}/${file}`
-                );
-                await fs.writeFile(patchPath, patchContent);
-                await exec(`git apply ${patchPath}`, { cwd: codebasePath });
-                await fs.unlink(patchPath);
-            }
-            socket.emit(
-                "apply-result",
-                "Selected changes applied successfully"
-            );
-        } catch (error) {
-            console.error("Error applying selected diffs:", error);
-            socket.emit("error", "Failed to apply selected changes");
-        }
-    });
-
-    socket.on("disconnect", () => {
-        console.log("Client disconnected");
-    });
-});
-
 async function isScriptContentValid(scriptContent: string): Promise<boolean> {
     // Check for extra backslashes
     if (
@@ -285,18 +234,16 @@ app.get("/api/dev-repo/start", async (req: Request, res: Response) => {
                         });
                     }
                 }
-                return res
-                    .status(500)
-                    .send({
-                        error: `Failed to start dev-test repo: ${stderr}`,
-                    });
+                return res.status(500).send({
+                    error: `Failed to start dev-test repo: ${stderr}`,
+                });
             }
 
             // After starting, poll for health check
             const success = await pollHealthCheck(
                 devTestHealthCheckURL,
                 5,
-                2000
+                2000,
             ); // Retry 5 times, 2000ms apart
             if (success) {
                 res.send({ message: "Dev-test repo started and is healthy." });
@@ -305,7 +252,7 @@ app.get("/api/dev-repo/start", async (req: Request, res: Response) => {
                     error: "Dev-test repo started but failed health check.",
                 });
             }
-        }
+        },
     );
 });
 
@@ -313,7 +260,7 @@ app.get("/api/dev-repo/start", async (req: Request, res: Response) => {
 async function pollHealthCheck(
     url: string,
     retries: number,
-    interval: number | undefined
+    interval: number | undefined,
 ) {
     for (let i = 0; i < retries; i++) {
         try {
@@ -355,6 +302,8 @@ app.get("/api/dev-repo/health", async (req: Request, res: Response) => {
 });
 
 // Healthcheck endpoint
+// @functionalityID: 2-HEALTHCHECK-URL
+// @tests: src/tests/healthCheck.test.ts
 app.get("/health", (req: Request, res: Response) => {
     res.status(200).send({ status: "ok" });
 });
@@ -364,7 +313,13 @@ httpServer.listen(port, () => {
     console.log(`Server with Websockets running at http://localhost:${port}`);
 });
 
-// For localtunnel communication with GPT actions
-/*
-lt --subdomain 'codebaseapiv2' --port 3000
-*/
+export function startTestServer(testPort: Number): Promise<Server> {
+    return new Promise((resolve, reject) => {
+        const server = httpTestServer
+            .listen(testPort, () => {
+                console.log(`Test server started on port ${testPort}`);
+                resolve(server);
+            })
+            .on("error", reject);
+    });
+}

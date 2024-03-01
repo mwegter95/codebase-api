@@ -1,0 +1,134 @@
+[
+  {
+    "timestamp": "2024-02-27T20:36:45.748Z",
+    "added": [
+      {
+        "name": "getAllFiles"
+      },
+      {
+        "name": "extractNamedFunctionsFromSource"
+      },
+      {
+        "name": "visit"
+      },
+      {
+        "name": "extractTestFileFromComments"
+      },
+      {
+        "name": "generateFunctionListForCodebase"
+      },
+      {
+        "name": "updateFunctionsListHistory"
+      },
+      {
+        "name": "writeFunctionsListToFile"
+      },
+      {
+        "name": "generateAndTrackFunctionList"
+      },
+      {
+        "name": "readTrackerFile"
+      },
+      {
+        "name": "writeTrackerFile"
+      },
+      {
+        "name": "ensureHistoryFile"
+      },
+      {
+        "name": "appendTestHistory"
+      },
+      {
+        "name": "runJestTests"
+      },
+      {
+        "name": "executeScript"
+      },
+      {
+        "name": "POST_handler_\"_api_execute_script\""
+      },
+      {
+        "name": "POST_handler_\"_api_execute_dev-script\""
+      },
+      {
+        "name": "GET_handler_\"_api_codebase_tree\""
+      },
+      {
+        "name": "GET_handler_\"_api_codebase_file\""
+      },
+      {
+        "name": "GET_handler_\"_api_git_diff\""
+      },
+      {
+        "name": "GET_handler_\"_api_functionality_tracker\""
+      },
+      {
+        "name": "GET_handler_\"_api_dev-repo_start\""
+      },
+      {
+        "name": "pollHealthCheck"
+      },
+      {
+        "name": "checkHealth"
+      },
+      {
+        "name": "GET_handler_\"_api_dev-repo_test\""
+      },
+      {
+        "name": "GET_handler_\"_api_dev-repo_health\""
+      },
+      {
+        "name": "GET_handler_\"_health\""
+      },
+      {
+        "name": "startTestServer"
+      },
+      {
+        "name": "initTest"
+      },
+      {
+        "name": "initTestFromFiles"
+      },
+      {
+        "name": "readJsonFile"
+      }
+    ],
+    "removed": []
+  },
+  {
+    "timestamp": "2024-02-28T16:22:22.208Z",
+    "added": [],
+    "removed": [
+      {
+        "name": "generateAndTrackFunctionList"
+      },
+      {
+        "name": "pollHealthCheck"
+      },
+      {
+        "name": "checkHealth"
+      },
+      {
+        "name": "readJsonFile"
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-02-28T16:23:15.481Z",
+    "added": [
+      {
+        "name": "generateAndTrackFunctionList"
+      },
+      {
+        "name": "pollHealthCheck"
+      },
+      {
+        "name": "checkHealth"
+      },
+      {
+        "name": "readJsonFile"
+      }
+    ],
+    "removed": []
+  }
+]

@@ -1,0 +1,34 @@
+{
+  "1-APPLICATION-STARTUP": {
+    "FunctionalityID": "1-APPLICATION-STARTUP",
+    "TestFileLocation": "./tests/startup.test.ts",
+    "ExpectedTestOutput": "Application starts successfully",
+    "TestFrequency": "On Commit",
+    "Priority": "High",
+    "Notes": "Critical for application functionality",
+    "LastTestResult": "Passed",
+    "LastTestTime": "2024-02-24T00:34:47.098Z",
+    "LastTestOutput": "1-APPLICATION-STARTUP testHistory.json exists and is not empty",
+    "LastOutputMatchesExpected": "Yes",
+    "LastUpdated": "2024-02-24T00:34:47.098Z"
+  },
+  "2-HEALTHCHECK-URL": {
+    "FunctionalityID": "2-HEALTHCHECK-URL",
+    "TestFileLocation": "./tests/healthCheck.test.ts",
+    "ExpectedTestOutput": "Health check endpoint returns 200 OK",
+    "Dependencies": [
+      "Express server running"
+    ],
+    "TestFrequency": "On Commit",
+    "Priority": "High",
+    "Notes": "Ensures the health check endpoint is responsive",
+    "LastTestResult": "Passed",
+    "LastTestTime": "2024-02-24T00:34:47.095Z",
+    "LastTestOutput": "2-HEALTHCHECK-URL Health check endpoint returns 200 OK",
+    "LastOutputMatchesExpected": "Yes",
+    "LastUpdated": "2024-02-24T00:34:47.095Z",
+    "affectedNamedFunctions": [
+      "GET_handler_\"_health\""
+    ]
+  }
+}

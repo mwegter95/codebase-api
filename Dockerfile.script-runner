@@ -3,10 +3,15 @@ FROM script-runner:latest
 
 # Install Git, tree, Node.js, npm, and bash
 RUN apk update && \
-    apk add --no-cache git tree nodejs npm bash
+    apk add --no-cache git tree nodejs npm bash curl jq
 
 # Install Prettier globally using npm
 RUN npm install -g prettier
+
+# Install TypeScript globally.
+RUN npm install -g typescript ts-node
+# Depending on configuration, you may also need these
+RUN npm install -D tslib @types/node
 
 # Copy .prettierrc file into the container
 COPY .prettierrc /root/.prettierrc
@@ -19,7 +24,6 @@ RUN printf "[includeIf \"gitdir:personal/\"]\n\tpath = .gitconfig-personal\n\n\
     [diff]\n\tsubmodule = log\n\
     [init]\n\tdefaultBranch = main\n\
     [pull]\n\trebase = false\n" > /root/.gitconfig
-
 
 
 
